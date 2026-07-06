@@ -51,7 +51,7 @@ File `netlify.toml` di root project harus berisi:
 ```toml
 [build]
   command = "npm run build"
-  publish = ".output/public"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
@@ -95,7 +95,7 @@ Kalau repo belum ada di GitHub, buat repo baru dulu, lalu ikuti perintah push da
 
 ```text
 Build command: npm run build
-Publish directory: .output/public
+Publish directory: dist
 ```
 
 8. Klik deploy.
