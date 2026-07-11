@@ -11,9 +11,21 @@ const nitroPreset = process.env.NITRO_PRESET || "node-server";
 export default defineConfig({
   nitro: {
     preset: nitroPreset,
+    // Netlify functions must be self-contained. Keep runtime dependencies bundled.
     ...({ noExternals: true } as Record<string, unknown>),
   },
   vite: {
+    resolve: {
+      // tslib's CommonJS entry is miscompiled by the Netlify bundle step.
+      // Its official ESM build avoids that interop path.
+      alias: { tslib: "tslib/tslib.es6.mjs" },
+    },
+    // Transform server dependencies before Nitro bundles them. Some ESM packages
+    // (including Radix and Supabase) otherwise resolve their CommonJS fallbacks
+    // as missing default exports in Netlify's server runtime.
+    ssr: {
+      noExternal: true,
+    },
     server: {
       allowedHosts: [".loca.lt", ".ngrok-free.app"],
     },
