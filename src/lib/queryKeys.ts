@@ -18,6 +18,7 @@ export const queryKeys = {
     budgets: ["budgets"] as const,
     investments: ["investments"] as const,
     assets: ["assets"] as const,
+    accounts: ["money-accounts-full"] as const,
   },
   activity: {
     tasks: ["academic_tasks"] as const,
@@ -31,6 +32,7 @@ export const queryKeys = {
     list: ["businesses"] as const,
     selected: ["selected-business"] as const,
     overview: (id: string | null) => ["business-overview", id ?? "all"] as const,
+    sheets: (id: string | null) => ["business-sheet-dashboard", id ?? "none"] as const,
     products: (id: string | null) => ["business-products", id ?? "all"] as const,
     sales: (id: string | null) => ["business-sales", id ?? "all"] as const,
     suppliers: (id: string | null) => ["business-suppliers", id ?? "all"] as const,
@@ -51,5 +53,7 @@ export const queryKeys = {
     notifPrefs: ["notif-prefs"] as const,
     jobs: ["telegram-jobs"] as const,
     logs: ["telegram-message-logs"] as const,
+    schedules: ["scheduled-messages"] as const,
   },
+  sora: { memories: ["sora-profile-memory"] as const },
 };

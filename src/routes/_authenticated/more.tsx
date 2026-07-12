@@ -17,6 +17,8 @@ import {
   type NotifPrefs,
 } from "@/lib/telegram.functions";
 import { resetAllAccountData } from "@/lib/account-reset.functions";
+import { ScheduledMessages } from "@/components/telegram/ScheduledMessages";
+import { MemoryManager } from "@/components/sora/MemoryManager";
 
 import {
   Brain,
@@ -310,7 +312,7 @@ function MorePage() {
           <>
             <p className="text-xs text-muted-foreground">
               Bot aktif untuk Chat ID <code>{String(status?.telegram.chatId ?? "")}</code>. Coba
-              kirim <code>/menu</code>, <code>/today</code>, <code>/uang</code>.
+              kirim <code>/menu</code>, <code>/today</code>, atau <code>/fokus</code>.
             </p>
             <div className="flex gap-2">
               <Input
@@ -373,6 +375,9 @@ function MorePage() {
           </>
         )}
       </Card>
+
+      {linked && <ScheduledMessages />}
+      <MemoryManager />
 
       {/* Notification preferences */}
       {linked && (

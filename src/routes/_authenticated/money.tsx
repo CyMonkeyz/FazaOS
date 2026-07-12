@@ -9,6 +9,7 @@ import { ReceivablesTab } from "@/components/money/Receivables";
 import { BillsTab } from "@/components/money/Bills";
 import { AssetsTab } from "@/components/money/Assets";
 import { InvestmentsTab } from "@/components/money/Investments";
+import { AccountsTab } from "@/components/money/Accounts";
 
 export const Route = createFileRoute("/_authenticated/money")({
   head: () => ({ meta: [{ title: "Money Guard — Faza OS" }] }),
@@ -25,6 +26,7 @@ function MoneyPage() {
           <TabsList className="w-max">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="transactions">Transaksi</TabsTrigger>
+            <TabsTrigger value="accounts">Rekening</TabsTrigger>
             <TabsTrigger value="budgets">Budget</TabsTrigger>
             <TabsTrigger value="debts">Hutang</TabsTrigger>
             <TabsTrigger value="receivables">Piutang</TabsTrigger>
@@ -39,6 +41,9 @@ function MoneyPage() {
         </TabsContent>
         <TabsContent value="transactions" className="mt-4">
           <TransactionsTab />
+        </TabsContent>
+        <TabsContent value="accounts" className="mt-4">
+          <AccountsTab />
         </TabsContent>
         <TabsContent value="budgets" className="mt-4">
           <BudgetsTab />

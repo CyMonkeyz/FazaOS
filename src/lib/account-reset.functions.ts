@@ -10,6 +10,12 @@ const resetSchema = z.object({
 });
 
 const USER_DATA_TABLES: Array<{ table: string; userColumn?: string }> = [
+  { table: "sora_memory_audit" },
+  { table: "sora_conversation_messages" },
+  { table: "sora_profile_memories" },
+  { table: "business_sheet_snapshots" },
+  { table: "business_sheet_connections" },
+  { table: "scheduled_messages" },
   { table: "journal_retention_logs" },
   { table: "google_sheets_sync_logs" },
   { table: "google_sheets_connections" },
@@ -22,16 +28,6 @@ const USER_DATA_TABLES: Array<{ table: string; userColumn?: string }> = [
   { table: "telegram_users" },
   { table: "investment_price_history" },
   { table: "investment_price_update_logs" },
-  { table: "supplier_business_links" },
-  { table: "inventory_movements" },
-  { table: "hpp_calculations" },
-  { table: "promo_simulations" },
-  { table: "business_reviews" },
-  { table: "business_expenses" },
-  { table: "sales" },
-  { table: "inventory_items" },
-  { table: "products" },
-  { table: "suppliers" },
   { table: "businesses" },
   { table: "supplement_logs" },
   { table: "supplement_purchases" },
@@ -134,7 +130,7 @@ export const resetAllAccountData = createServerFn({ method: "POST" })
       {
         user_id: userId,
         locale: "id",
-        theme: "light",
+        theme: "dark",
         hide_amounts: false,
         show_amounts_in_telegram: false,
         telegram_enabled: false,

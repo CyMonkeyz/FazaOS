@@ -425,6 +425,20 @@ async function fetchModuleSnapshot(userId: string, module: SoraModule, db: SoraD
         }),
         safeSelect(
           db,
+          "business_sheet_connections",
+          userId,
+          "id,business_id,status,last_sync_at,last_error",
+          { limit: 10, orderBy: "last_sync_at" },
+        ),
+        safeSelect(
+          db,
+          "business_sheet_snapshots",
+          userId,
+          "id,business_id,summary,sales,expenses,products,stock,captured_at",
+          { limit: 10, orderBy: "captured_at" },
+        ),
+        safeSelect(
+          db,
           "sales",
           userId,
           "id,business_id,product_name,quantity,total,profit,sold_at",

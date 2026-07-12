@@ -74,6 +74,8 @@ const SAFE_READ_COLUMNS: Record<string, string> = {
   competitions: "id,title,organizer,deadline,status,result,notes",
   portfolio_items: "id,title,description,url,status,notes",
   businesses: "id,name,description,is_active",
+  business_sheet_connections: "id,business_id,spreadsheet_id,status,last_sync_at,last_error",
+  business_sheet_snapshots: "id,business_id,summary,sales,expenses,products,stock,captured_at",
   products: "id,business_id,name,sku,selling_price,current_stock,is_active",
   sales: "id,business_id,product_name,quantity,total,profit,sold_at",
   daily_logs: "id,log_date,mood,energy,focus,wins,struggles,gratitude,tomorrow_focus",
@@ -88,6 +90,8 @@ const SAFE_READ_COLUMNS: Record<string, string> = {
   workout_logs: "id,workout_date,workout_type,duration_minutes,intensity,notes",
   body_metrics: "id,metric_date,weight_kg,sleep_hours,sleep_quality,water_liters,steps",
   supplement_items: "id,name,category,dosage,frequency,stock_quantity,unit",
+  scheduled_messages: "id,title,message,recurrence,next_run_at,last_run_at,status",
+  sora_profile_memories: "id,category,memory_key,content,updated_at",
 };
 
 const SAFE_UPDATE_COLUMNS: Record<string, string[]> = {
@@ -380,60 +384,6 @@ async function moneyOverview(ctx: SoraToolContext) {
     0,
   );
   return {
-    readUserData: tool({
-      description:
-        "Generic safe reader for allowlisted user-facing Faza OS tables. Always user-scoped, max 20 rows, and text is truncated.",
-      inputSchema: z.object({
-        table: z.enum(Object.keys(SAFE_READ_COLUMNS) as [string, ...string[]]),
-        limit: z.number().int().min(1).max(20).optional(),
-      }),
-      execute: async ({ table, limit }) =>
-        rows(ctx, table, SAFE_READ_COLUMNS[table], { limit: Math.min(limit ?? 10, 20) }),
-    }),
-    updateUserRecord: tool({
-      description:
-        "Update one exact user-owned record. Only allowlisted columns are accepted; never use for deletion.",
-      inputSchema: z.object({
-        table: z.enum(Object.keys(SAFE_UPDATE_COLUMNS) as [string, ...string[]]),
-        recordId: z.string().uuid(),
-        changes: z.record(z.string(), z.unknown()),
-      }),
-      execute: async ({ table, recordId, changes }) => {
-        const allowed = SAFE_UPDATE_COLUMNS[table] ?? [];
-        const safe = Object.fromEntries(
-          Object.entries(changes).filter(([key]) => allowed.includes(key)),
-        );
-        if (!Object.keys(safe).length)
-          return { ok: false, message: "Tidak ada field yang aman untuk diperbarui." };
-        const { data, error } = await db(ctx)
-          .from(table)
-          .update(safe)
-          .eq("id", recordId)
-          .eq("user_id", ctx.userId)
-          .is("deleted_at", null)
-          .select("id")
-          .maybeSingle();
-        return error
-          ? { ok: false, message: error.message }
-          : { ok: Boolean(data), table, recordId, updated: Object.keys(safe) };
-      },
-    }),
-    requestDeleteRecord: tool({
-      description:
-        "Start a server-side two-confirmation soft-delete for one exact record. Never claims deletion yet.",
-      inputSchema: z.object({
-        table: z.string().min(1),
-        recordId: z.string().uuid().optional(),
-        query: z.string().min(1).max(120).optional(),
-      }),
-      execute: async (input) => prepareServerDelete(ctx, input),
-    }),
-    confirmPendingDelete: tool({
-      description:
-        "Continue an existing delete confirmation. Server checks the raw user message; tool arguments cannot bypass it.",
-      inputSchema: z.object({}),
-      execute: async () => continueServerDelete(ctx),
-    }),
     period_start: start,
     income,
     expense,
@@ -645,7 +595,107 @@ export function createSoraTools(ctx: SoraToolContext) {
         rows(ctx, table, columns, { ...defaults, limit: limit ?? defaults.limit ?? 20 }),
     });
 
-  return {
+  const tools: Record<string, any> = {
+    readUserData: tool({
+      description:
+        "Safe allowlisted reader for user-facing Faza OS data, always scoped to the active user and limited to 20 rows.",
+      inputSchema: z.object({
+        table: z.enum(Object.keys(SAFE_READ_COLUMNS) as [string, ...string[]]),
+        limit: z.number().int().min(1).max(20).optional(),
+      }),
+      execute: async ({ table, limit }) =>
+        rows(ctx, table, SAFE_READ_COLUMNS[table], { limit: limit ?? 10 }),
+    }),
+    updateUserRecord: tool({
+      description: "Update one exact user-owned record using allowlisted fields only.",
+      inputSchema: z.object({
+        table: z.enum(Object.keys(SAFE_UPDATE_COLUMNS) as [string, ...string[]]),
+        recordId: z.string().uuid(),
+        changes: z.record(z.string(), z.unknown()),
+      }),
+      execute: async ({ table, recordId, changes }) => {
+        const safe = Object.fromEntries(
+          Object.entries(changes).filter(([key]) =>
+            (SAFE_UPDATE_COLUMNS[table] ?? []).includes(key),
+          ),
+        );
+        if (!Object.keys(safe).length) return { ok: false, message: "Tidak ada field aman." };
+        const { data, error } = await db(ctx)
+          .from(table)
+          .update(safe)
+          .eq("id", recordId)
+          .eq("user_id", ctx.userId)
+          .is("deleted_at", null)
+          .select("id")
+          .maybeSingle();
+        return error
+          ? { ok: false, message: error.message }
+          : { ok: Boolean(data), updated: Object.keys(safe) };
+      },
+    }),
+    requestDeleteRecord: tool({
+      description: "Start a server-side two-step soft-delete for one exact record.",
+      inputSchema: z.object({
+        table: z.string(),
+        recordId: z.string().uuid().optional(),
+        query: z.string().max(120).optional(),
+      }),
+      execute: async (input) => prepareServerDelete(ctx, input),
+    }),
+    confirmPendingDelete: tool({
+      description: "Continue pending deletion; the server validates raw user confirmation.",
+      inputSchema: z.object({}),
+      execute: async () => continueServerDelete(ctx),
+    }),
+    runSafeMaintenance: tool({
+      description: "Run an allowlisted, user-scoped maintenance action.",
+      inputSchema: z.object({ action: z.enum(["refresh_garden", "schema_audit"]) }),
+      execute: async ({ action }) => {
+        if (action === "schema_audit") return { ok: true, schema: getFazaSchemaMap() };
+        const { error } = await db(ctx).rpc("refresh_garden_season", {
+          p_user_id: ctx.userId,
+          p_date: getWibNow().date,
+        });
+        return error ? { ok: false, message: error.message } : { ok: true };
+      },
+    }),
+    rememberProfileFact: tool({
+      description: "Save a permanent memory only after an explicit remember request.",
+      inputSchema: z.object({
+        category: z.enum([
+          "identity",
+          "communication",
+          "interest",
+          "education",
+          "work",
+          "project",
+          "goal",
+          "habit",
+          "appearance",
+          "other",
+        ]),
+        key: z.string().min(2).max(80),
+        content: z.string().min(2).max(1000),
+      }),
+      execute: async ({ category, key, content }) => {
+        const { data, error } = await db(ctx)
+          .from("sora_profile_memories")
+          .upsert(
+            {
+              user_id: ctx.userId,
+              category,
+              memory_key: key,
+              content,
+              source_channel: ctx.channel ?? "web",
+              deleted_at: null,
+            },
+            { onConflict: "user_id,memory_key" },
+          )
+          .select("id,category,content")
+          .maybeSingle();
+        return error ? { ok: false, message: error.message } : { ok: true, memory: data };
+      },
+    }),
     getFazaSchemaMap: tool({
       description:
         "Full Faza OS schema registry: all modules, tables, purposes, relationships, and planned/implemented status.",
@@ -1811,6 +1861,22 @@ export function createSoraTools(ctx: SoraToolContext) {
       },
     }),
   };
+  for (const retired of [
+    "getBusinessProducts",
+    "getBusinessSales",
+    "getBusinessSuppliers",
+    "getBusinessHPP",
+    "getBusinessPromos",
+    "getBusinessInventory",
+    "getBusinessProfitReport",
+    "getAllBusinessAggregate",
+    "addProduct",
+    "addSale",
+    "addBusinessExpense",
+    "updateStock",
+  ])
+    delete tools[retired];
+  return tools;
 }
 
 export type SoraTools = ReturnType<typeof createSoraTools>;

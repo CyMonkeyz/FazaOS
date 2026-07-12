@@ -24,6 +24,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ConfirmProvider";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export const Route = createFileRoute("/_authenticated/health")({
   head: () => ({ meta: [{ title: "Health - Faza OS" }] }),
@@ -130,6 +139,14 @@ function HealthDashboard() {
         waterAvg: avg(bodyRows.map((b) => Number(b.water_liters)).filter(Number.isFinite)),
         lowSupplements,
         supplementsMissing: !!supplements.error,
+        bodyTrend: [...bodyRows].reverse().map((b) => ({
+          date: b.metric_date.slice(5),
+          tidur: Number(b.sleep_hours ?? 0),
+          air: Number(b.water_liters ?? 0),
+        })),
+        workoutMinutes: (logs.data ?? [])
+          .slice(0, 30)
+          .reduce((sum, log) => sum + Number(log.duration_minutes ?? 0), 0),
       };
     },
   });
@@ -161,6 +178,44 @@ function HealthDashboard() {
           icon={Droplet}
         />
       </div>
+      <Card className="p-4">
+        <div className="mb-1 text-sm font-semibold">Ritme kesehatan 7 hari</div>
+        <div className="mb-3 text-xs text-muted-foreground">
+          {d.workoutMinutes} menit workout tercatat dalam 30 aktivitas terakhir.
+        </div>
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={d.bodyTrend}>
+              <defs>
+                <linearGradient id="sleepGlow" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#a78bfa" stopOpacity=".7" />
+                  <stop offset="1" stopColor="#a78bfa" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+              <XAxis dataKey="date" fontSize={10} />
+              <YAxis hide />
+              <Tooltip />
+              <Area
+                type="monotone"
+                dataKey="tidur"
+                name="Tidur (jam)"
+                stroke="#a78bfa"
+                fill="url(#sleepGlow)"
+                strokeWidth={2}
+              />
+              <Area
+                type="monotone"
+                dataKey="air"
+                name="Air (L)"
+                stroke="#22d3ee"
+                fill="transparent"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
       <Card className="p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-medium">
           <Activity className="h-4 w-4 text-primary" /> Workout hari ini

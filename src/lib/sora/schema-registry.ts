@@ -2,7 +2,7 @@ import type { SoraModule, SoraSchemaEntry } from "./types";
 
 const entry = (data: SoraSchemaEntry): SoraSchemaEntry => data;
 
-export const SORA_SCHEMA_REGISTRY: SoraSchemaEntry[] = [
+const SORA_SCHEMA_REGISTRY_RAW: SoraSchemaEntry[] = [
   entry({
     table: "profiles",
     module: "Core",
@@ -1021,7 +1021,89 @@ export const SORA_SCHEMA_REGISTRY: SoraSchemaEntry[] = [
     implemented: true,
     commonQuestions: ["Journal lama dibersihkan kapan?"],
   }),
+  entry({
+    table: "scheduled_messages",
+    module: "Integrations",
+    purpose: "User-owned recurring Telegram schedules in Asia/Jakarta.",
+    keyColumns: ["user_id", "title", "recurrence", "next_run_at", "status"],
+    relationships: ["scheduled_messages.user_id -> auth.users.id"],
+    userOwned: true,
+    sensitive: ["message"],
+    implemented: true,
+    commonQuestions: ["Pesan apa yang terjadwal?"],
+  }),
+  entry({
+    table: "sora_profile_memories",
+    module: "Core",
+    purpose: "Permanent profile facts explicitly remembered by Sora.",
+    keyColumns: ["user_id", "category", "memory_key", "content"],
+    relationships: ["sora_profile_memories.user_id -> auth.users.id"],
+    userOwned: true,
+    sensitive: ["content"],
+    implemented: true,
+    commonQuestions: ["Apa yang kamu ingat tentang aku?"],
+  }),
+  entry({
+    table: "sora_conversation_messages",
+    module: "Core",
+    purpose: "Unified web and Telegram conversation memory retained for 90 days.",
+    keyColumns: ["user_id", "channel", "conversation_key", "role", "created_at"],
+    relationships: ["sora_conversation_messages.user_id -> auth.users.id"],
+    userOwned: true,
+    sensitive: ["content"],
+    implemented: true,
+    commonQuestions: ["Apa konteks percakapan terakhir?"],
+  }),
+  entry({
+    table: "business_sheet_connections",
+    module: "Business",
+    purpose: "View-only Google Sheets connection per business.",
+    keyColumns: ["user_id", "business_id", "spreadsheet_id", "status", "last_sync_at"],
+    relationships: ["business_sheet_connections.business_id -> businesses.id"],
+    userOwned: true,
+    sensitive: ["spreadsheet_id"],
+    implemented: true,
+    commonQuestions: ["Sheet bisnis terakhir sync kapan?"],
+  }),
+  entry({
+    table: "sora_memory_audit",
+    module: "Integrations",
+    purpose: "Read-only audit trail for permanent memory changes.",
+    keyColumns: ["user_id", "memory_id", "action", "created_at"],
+    relationships: ["sora_memory_audit.user_id -> auth.users.id"],
+    userOwned: true,
+    sensitive: ["before_value", "after_value"],
+    implemented: true,
+    commonQuestions: ["Memory apa yang baru berubah?"],
+  }),
+  entry({
+    table: "business_sheet_snapshots",
+    module: "Business",
+    purpose: "Immutable normalized business dashboard snapshot from Google Sheets.",
+    keyColumns: ["user_id", "business_id", "summary", "captured_at"],
+    relationships: ["business_sheet_snapshots.business_id -> businesses.id"],
+    userOwned: true,
+    sensitive: ["summary", "sales", "expenses"],
+    implemented: true,
+    commonQuestions: ["Performa toko terbaru bagaimana?"],
+  }),
 ];
+
+const RETIRED_MANUAL_BUSINESS_TABLES = new Set([
+  "products",
+  "sales",
+  "suppliers",
+  "business_expenses",
+  "hpp_calculations",
+  "promo_simulations",
+  "inventory_items",
+  "inventory_movements",
+  "supplier_business_links",
+  "business_reviews",
+]);
+export const SORA_SCHEMA_REGISTRY = SORA_SCHEMA_REGISTRY_RAW.filter(
+  (item) => !RETIRED_MANUAL_BUSINESS_TABLES.has(item.table),
+);
 
 export function getFazaSchemaMap() {
   return SORA_SCHEMA_REGISTRY;

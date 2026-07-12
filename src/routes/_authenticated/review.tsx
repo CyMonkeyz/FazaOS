@@ -7,8 +7,7 @@ import { EmptyState, LoadingBlock, PageHeader, StatCard } from "@/components/ui-
 import { Card } from "@/components/ui/card";
 import { DailyLogTab } from "@/components/review/DailyLog";
 import { WeeklyTab } from "@/components/review/Weekly";
-import { GoalsTab } from "@/components/review/Goals";
-import { GardenMiniCard, HabitsGardenTab } from "@/components/review/HabitsGarden";
+import { GardenMiniCard } from "@/components/review/HabitsGarden";
 import { supabase } from "@/integrations/supabase/client";
 import { History, Sprout } from "lucide-react";
 
@@ -22,7 +21,7 @@ function ReviewPage() {
     <div className="space-y-4">
       <PageHeader
         title="Review"
-        subtitle="Daily journal, weekly review otomatis, goals, dan history view-only."
+        subtitle="Daily journal, weekly review, dan riwayat evaluasi yang rapi."
       />
       <Tabs defaultValue="dashboard" className="w-full">
         <div className="overflow-x-auto -mx-4 px-4">
@@ -30,8 +29,6 @@ function ReviewPage() {
             <TabsTrigger value="dashboard">Dashboard Review</TabsTrigger>
             <TabsTrigger value="daily">Daily Journal</TabsTrigger>
             <TabsTrigger value="weekly">Weekly Review</TabsTrigger>
-            <TabsTrigger value="goals">Goals</TabsTrigger>
-            <TabsTrigger value="habits">Habits &amp; Garden</TabsTrigger>
             <TabsTrigger value="history">Journal History</TabsTrigger>
           </TabsList>
         </div>
@@ -43,12 +40,6 @@ function ReviewPage() {
         </TabsContent>
         <TabsContent value="weekly" className="mt-4">
           <WeeklyTab />
-        </TabsContent>
-        <TabsContent value="goals" className="mt-4">
-          <GoalsTab />
-        </TabsContent>
-        <TabsContent value="habits" className="mt-4">
-          <HabitsGardenTab />
         </TabsContent>
         <TabsContent value="history" className="mt-4">
           <JournalHistory />

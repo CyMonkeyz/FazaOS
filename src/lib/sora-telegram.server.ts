@@ -20,6 +20,11 @@ import {
   getPendingDeleteSummary,
   prepareServerDelete,
 } from "@/lib/sora/pending-actions.server";
+import {
+  getUnifiedMemory,
+  rememberExplicit,
+  saveConversationMessage,
+} from "@/lib/sora/memory.server";
 
 function admin(): SupabaseClient<Database> {
   return createClient<Database>(
@@ -34,7 +39,7 @@ function admin(): SupabaseClient<Database> {
 export const parseDeterministic = parseDeterministicAction;
 
 function telegramSafe(text: string) {
-  return esc(text)
+  return esc(text.replace(/[—–]/g, "-"))
     .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
     .replace(/__(.*?)__/g, "<b>$1</b>")
     .replace(/\n{3,}/g, "\n\n");
@@ -94,6 +99,14 @@ async function logTelegramMemory(
       message_text: text.slice(0, 1200),
       status,
     });
+    await saveConversationMessage(
+      userId,
+      "telegram",
+      String(chatId),
+      direction === "in" ? "user" : "assistant",
+      text,
+      sb,
+    );
   } catch {
     // Memory is helpful, not critical for the webhook response.
   }
@@ -185,9 +198,17 @@ async function askDeepSeekForTelegram(userId: string, text: string, sb: Supabase
   }
 
   const now = getWibNow();
-  const [context, memory, webResults] = await Promise.all([
+  const [context, memory, unifiedMemory, webResults] = await Promise.all([
     getRelevantContextForQuestion(userId, text, sb),
     getTelegramMemory(sb, userId),
+    getUnifiedMemory(
+      userId,
+      String(
+        (await sb.from("telegram_users").select("chat_id").eq("user_id", userId).maybeSingle()).data
+          ?.chat_id ?? "telegram",
+      ),
+      sb,
+    ),
     shouldUseWebSearch(text) ? searchWeb(text) : Promise.resolve([]),
   ]);
   const webContext = shouldUseWebSearch(text) ? formatWebContext(webResults) : "";
@@ -205,12 +226,13 @@ async function askDeepSeekForTelegram(userId: string, text: string, sb: Supabase
             "Untuk pertanyaan umum boleh pakai pengetahuan umum LLM. Untuk data personal Faza OS, gunakan hanya konteks DB dan memori 48 jam yang diberikan. Jangan mengarang angka/nama personal. " +
             "Jika WEB_CONTEXT tersedia, anggap itu hasil cek internet terbaru dan gunakan untuk fakta eksternal. Jika WEB_CONTEXT tidak tersedia padahal user minta info live, bilang belum berhasil verifikasi live lalu beri jawaban umum yang aman. " +
             "Jika data Faza OS kosong, katakan 'data belum tersedia di Faza OS'. " +
-            "Health adalah modul utama. Google Calendar lookahead 30 hari. Notifikasi terjadwal hanya Telegram. " +
+            "Health adalah modul utama. Business hanya dibaca dari snapshot Google Sheets per toko. Google Calendar lookahead 30 hari. Notifikasi terjadwal hanya Telegram. " +
+            "Jangan gunakan em dash atau en dash; gunakan tanda hubung biasa. " +
             "Jangan menyebut diri DeepSeek/Gemini.",
         },
         {
           role: "system",
-          content: `Waktu WIB: ${now.label}, ${now.time}.\n\nMEMORI TELEGRAM 48 JAM:\n${memory}\n\nDATA FAZA OS:\n${context}${webContext ? `\n\n${webContext}` : ""}`,
+          content: `Waktu WIB: ${now.label}, ${now.time}.\n\n${unifiedMemory}\n\nMEMORI TELEGRAM 48 JAM:\n${memory}\n\nDATA FAZA OS:\n${context}${webContext ? `\n\n${webContext}` : ""}`,
         },
         { role: "user", content: text },
       ],
@@ -273,6 +295,7 @@ export async function handleSoraText(chatId: number, userId: string, text: strin
 
   await cleanupOldTelegramMemory(sb, userId);
   await logTelegramMemory(sb, userId, chatId, "in", text, "received");
+  await rememberExplicit(userId, text, "telegram", sb);
 
   try {
     const thinking = THINKING_LINES[Math.floor(Math.random() * THINKING_LINES.length)];

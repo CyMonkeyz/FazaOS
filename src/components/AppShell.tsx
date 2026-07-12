@@ -6,6 +6,7 @@ import {
   Briefcase,
   HeartPulse,
   LineChart,
+  Sprout,
   Menu,
   Plus,
   Sparkles,
@@ -24,6 +25,7 @@ const desktopNav = [
   { to: "/business", label: "Bisnis", icon: Briefcase },
   { to: "/health", label: "Kesehatan", icon: HeartPulse },
   { to: "/review", label: "Evaluasi", icon: LineChart },
+  { to: "/growth", label: "Growth", icon: Sprout },
   { to: "/more", label: "Lainnya", icon: Menu },
 ] as const;
 

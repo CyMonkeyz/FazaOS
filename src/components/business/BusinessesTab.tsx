@@ -14,7 +14,6 @@ import { Plus, Trash2, Store, TrendingUp } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmProvider";
 
 type Biz = { id: string; name: string; description: string | null; created_at: string };
-type Sale = { business_id: string | null; total: number; profit: number; sold_at: string };
 
 const db = supabase as unknown as {
   from: (t: string) => {
@@ -56,16 +55,20 @@ export function BusinessesTab() {
     },
   });
 
-  const { data: sales } = useQuery({
-    queryKey: ["sales-for-businesses"],
+  const { data: snapshots } = useQuery({
+    queryKey: ["business-snapshots-list"],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("sales")
-        .select("business_id,total,profit,sold_at")
-        .is("deleted_at", null);
+      const { data, error } = await (supabase as any)
+        .from("business_sheet_snapshots")
+        .select("business_id,summary,captured_at")
+        .order("captured_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Sale[];
+      const latest = new Map<string, any>();
+      for (const row of data ?? [])
+        if (!latest.has(row.business_id)) latest.set(row.business_id, row);
+      return latest;
     },
+    retry: false,
   });
 
   const create = useMutation({
@@ -104,20 +107,17 @@ export function BusinessesTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  const monthSales = (sales ?? []).filter((s) => new Date(s.sold_at) >= monthStart);
-  const totalRevenue = monthSales.reduce((s, r) => s + Number(r.total), 0);
-  const totalProfit = monthSales.reduce((s, r) => s + Number(r.profit), 0);
   const bizStats = (businesses ?? []).map((b) => {
-    const rows = monthSales.filter((s) => s.business_id === b.id);
+    const summary = snapshots?.get(b.id)?.summary ?? {};
     return {
       ...b,
-      revenue: rows.reduce((s, r) => s + Number(r.total), 0),
-      profit: rows.reduce((s, r) => s + Number(r.profit), 0),
-      count: rows.length,
+      revenue: Number(summary.revenue ?? 0),
+      profit: Number(summary.profit ?? 0),
+      count: Number(summary.transactions ?? 0),
     };
   });
+  const totalRevenue = bizStats.reduce((s, b) => s + b.revenue, 0);
+  const totalProfit = bizStats.reduce((s, b) => s + b.profit, 0);
 
   return (
     <div className="space-y-3">
@@ -184,7 +184,7 @@ export function BusinessesTab() {
       ) : bizStats.length === 0 ? (
         <EmptyState
           title="Belum ada toko"
-          description="Tambah minimal satu toko/bisnis untuk mulai mencatat produk & penjualan."
+          description="Tambah toko lalu hubungkan template Google Sheets view-only."
           icon={Store}
         />
       ) : (
@@ -224,7 +224,7 @@ export function BusinessesTab() {
                     if (
                       await confirm({
                         title: "Hapus bisnis?",
-                        description: `"${b.name}" akan diarsipkan. Data produk/penjualan terkait tetap aman sebagai data historis.`,
+                        description: `"${b.name}" akan diarsipkan bersama koneksi dan snapshot spreadsheet-nya.`,
                         confirmText: "Hapus",
                       })
                     )

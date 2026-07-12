@@ -134,6 +134,18 @@
 
   html,
   body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(
+        circle at 12% 0%,
+        color-mix(in oklch, var(--primary) 13%, transparent),
+        transparent 32rem
+      ),
+      radial-gradient(
+        circle at 90% 20%,
+        color-mix(in oklch, var(--accent) 8%, transparent),
+        transparent 28rem
+      );
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;

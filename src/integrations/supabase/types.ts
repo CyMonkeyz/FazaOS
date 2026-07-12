@@ -961,6 +961,7 @@ export type Database = {
           deleted_at: string | null;
           id: string;
           initial_balance: number | null;
+          is_active: boolean;
           name: string;
           notes: string | null;
           updated_at: string | null;
@@ -973,6 +974,7 @@ export type Database = {
           deleted_at?: string | null;
           id?: string;
           initial_balance?: number | null;
+          is_active?: boolean;
           name: string;
           notes?: string | null;
           updated_at?: string | null;
@@ -985,6 +987,7 @@ export type Database = {
           deleted_at?: string | null;
           id?: string;
           initial_balance?: number | null;
+          is_active?: boolean;
           name?: string;
           notes?: string | null;
           updated_at?: string | null;
@@ -1776,12 +1779,15 @@ export type Database = {
       telegram_jobs: {
         Row: {
           attempts: number;
+          dedupe_key: string | null;
           chat_id: string;
           created_at: string;
           finished_at: string | null;
           id: string;
           job_type: string;
           last_error: string | null;
+          next_attempt_at: string | null;
+          scheduled_message_id: string | null;
           payload: Json;
           scheduled_at: string;
           started_at: string | null;
@@ -1791,12 +1797,15 @@ export type Database = {
         };
         Insert: {
           attempts?: number;
+          dedupe_key?: string | null;
           chat_id: string;
           created_at?: string;
           finished_at?: string | null;
           id?: string;
           job_type: string;
           last_error?: string | null;
+          next_attempt_at?: string | null;
+          scheduled_message_id?: string | null;
           payload?: Json;
           scheduled_at?: string;
           started_at?: string | null;
@@ -1806,12 +1815,15 @@ export type Database = {
         };
         Update: {
           attempts?: number;
+          dedupe_key?: string | null;
           chat_id?: string;
           created_at?: string;
           finished_at?: string | null;
           id?: string;
           job_type?: string;
           last_error?: string | null;
+          next_attempt_at?: string | null;
+          scheduled_message_id?: string | null;
           payload?: Json;
           scheduled_at?: string;
           started_at?: string | null;
@@ -1923,6 +1935,7 @@ export type Database = {
           note: string | null;
           payment_method: string | null;
           tags: string[] | null;
+          transfer_group_id: string | null;
           type: Database["public"]["Enums"]["txn_type"];
           updated_at: string | null;
           user_id: string;
@@ -1941,6 +1954,7 @@ export type Database = {
           note?: string | null;
           payment_method?: string | null;
           tags?: string[] | null;
+          transfer_group_id?: string | null;
           type: Database["public"]["Enums"]["txn_type"];
           updated_at?: string | null;
           user_id: string;
@@ -1959,6 +1973,7 @@ export type Database = {
           note?: string | null;
           payment_method?: string | null;
           tags?: string[] | null;
+          transfer_group_id?: string | null;
           type?: Database["public"]["Enums"]["txn_type"];
           updated_at?: string | null;
           user_id?: string;
@@ -2327,11 +2342,268 @@ export type Database = {
           },
         ];
       };
+      scheduled_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          channel: string;
+          title: string;
+          message: string;
+          recurrence: string;
+          scheduled_time: string;
+          scheduled_date: string | null;
+          weekday: number | null;
+          month_day: number | null;
+          timezone: string;
+          next_run_at: string;
+          last_run_at: string | null;
+          status: string;
+          max_attempts: number;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          channel?: string;
+          title: string;
+          message: string;
+          recurrence: string;
+          scheduled_time: string;
+          scheduled_date?: string | null;
+          weekday?: number | null;
+          month_day?: number | null;
+          timezone?: string;
+          next_run_at: string;
+          last_run_at?: string | null;
+          status?: string;
+          max_attempts?: number;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          channel?: string;
+          title?: string;
+          message?: string;
+          recurrence?: string;
+          scheduled_time?: string;
+          scheduled_date?: string | null;
+          weekday?: number | null;
+          month_day?: number | null;
+          timezone?: string;
+          next_run_at?: string;
+          last_run_at?: string | null;
+          status?: string;
+          max_attempts?: number;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      sora_profile_memories: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          memory_key: string;
+          content: string;
+          source_channel: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category: string;
+          memory_key: string;
+          content: string;
+          source_channel?: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: string;
+          memory_key?: string;
+          content?: string;
+          source_channel?: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      sora_conversation_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          channel: string;
+          conversation_key: string;
+          role: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          channel: string;
+          conversation_key: string;
+          role: string;
+          content: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          channel?: string;
+          conversation_key?: string;
+          role?: string;
+          content?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      sora_memory_audit: {
+        Row: {
+          id: string;
+          user_id: string;
+          memory_id: string | null;
+          action: string;
+          before_value: Json | null;
+          after_value: Json | null;
+          channel: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          memory_id?: string | null;
+          action: string;
+          before_value?: Json | null;
+          after_value?: Json | null;
+          channel?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          memory_id?: string | null;
+          action?: string;
+          before_value?: Json | null;
+          after_value?: Json | null;
+          channel?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      business_sheet_connections: {
+        Row: {
+          id: string;
+          user_id: string;
+          business_id: string;
+          folder_id: string | null;
+          spreadsheet_id: string;
+          spreadsheet_url: string | null;
+          template_config: Json;
+          status: string;
+          last_sync_at: string | null;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          business_id: string;
+          folder_id?: string | null;
+          spreadsheet_id: string;
+          spreadsheet_url?: string | null;
+          template_config?: Json;
+          status?: string;
+          last_sync_at?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          business_id?: string;
+          folder_id?: string | null;
+          spreadsheet_id?: string;
+          spreadsheet_url?: string | null;
+          template_config?: Json;
+          status?: string;
+          last_sync_at?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      business_sheet_snapshots: {
+        Row: {
+          id: string;
+          user_id: string;
+          business_id: string;
+          source_hash: string;
+          summary: Json;
+          sales: Json;
+          expenses: Json;
+          products: Json;
+          stock: Json;
+          captured_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          business_id: string;
+          source_hash: string;
+          summary?: Json;
+          sales?: Json;
+          expenses?: Json;
+          products?: Json;
+          stock?: Json;
+          captured_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          business_id?: string;
+          source_hash?: string;
+          summary?: Json;
+          sales?: Json;
+          expenses?: Json;
+          products?: Json;
+          stock?: Json;
+          captured_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      cleanup_sora_conversations: { Args: Record<PropertyKey, never>; Returns: number };
+      transfer_money: {
+        Args: {
+          p_from_account: string;
+          p_to_account: string;
+          p_amount: number;
+          p_date?: string;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
       ensure_garden_season: {
         Args: { p_date?: string; p_user_id: string };
         Returns: string;

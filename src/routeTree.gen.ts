@@ -18,12 +18,16 @@ import { Route as AuthenticatedMoreRouteImport } from './routes/_authenticated/m
 import { Route as AuthenticatedMoneyRouteImport } from './routes/_authenticated/money'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
+import { Route as AuthenticatedGrowthRouteImport } from './routes/_authenticated/growth'
 import { Route as AuthenticatedBusinessRouteImport } from './routes/_authenticated/business'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicCronUpdateInvestmentsRouteImport } from './routes/api/public/cron/update-investments'
+import { Route as ApiPublicCronTelegramWorkerRouteImport } from './routes/api/public/cron/telegram-worker'
+import { Route as ApiPublicCronSyncBusinessSheetsRouteImport } from './routes/api/public/cron/sync-business-sheets'
 import { Route as ApiPublicCronNotifyRouteImport } from './routes/api/public/cron/notify'
+import { Route as ApiPublicCronMaintenanceRouteImport } from './routes/api/public/cron/maintenance'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -69,6 +73,11 @@ const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
   path: '/health',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGrowthRoute = AuthenticatedGrowthRouteImport.update({
+  id: '/growth',
+  path: '/growth',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBusinessRoute = AuthenticatedBusinessRouteImport.update({
   id: '/business',
   path: '/business',
@@ -96,11 +105,29 @@ const ApiPublicCronUpdateInvestmentsRoute =
     path: '/api/public/cron/update-investments',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronTelegramWorkerRoute =
+  ApiPublicCronTelegramWorkerRouteImport.update({
+    id: '/api/public/cron/telegram-worker',
+    path: '/api/public/cron/telegram-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronSyncBusinessSheetsRoute =
+  ApiPublicCronSyncBusinessSheetsRouteImport.update({
+    id: '/api/public/cron/sync-business-sheets',
+    path: '/api/public/cron/sync-business-sheets',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronNotifyRoute = ApiPublicCronNotifyRouteImport.update({
   id: '/api/public/cron/notify',
   path: '/api/public/cron/notify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronMaintenanceRoute =
+  ApiPublicCronMaintenanceRouteImport.update({
+    id: '/api/public/cron/maintenance',
+    path: '/api/public/cron/maintenance',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -108,13 +135,17 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AuthenticatedActivityRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/business': typeof AuthenticatedBusinessRoute
+  '/growth': typeof AuthenticatedGrowthRoute
   '/health': typeof AuthenticatedHealthRoute
   '/home': typeof AuthenticatedHomeRoute
   '/money': typeof AuthenticatedMoneyRoute
   '/more': typeof AuthenticatedMoreRoute
   '/review': typeof AuthenticatedReviewRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/public/cron/maintenance': typeof ApiPublicCronMaintenanceRoute
   '/api/public/cron/notify': typeof ApiPublicCronNotifyRoute
+  '/api/public/cron/sync-business-sheets': typeof ApiPublicCronSyncBusinessSheetsRoute
+  '/api/public/cron/telegram-worker': typeof ApiPublicCronTelegramWorkerRoute
   '/api/public/cron/update-investments': typeof ApiPublicCronUpdateInvestmentsRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -124,13 +155,17 @@ export interface FileRoutesByTo {
   '/activity': typeof AuthenticatedActivityRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/business': typeof AuthenticatedBusinessRoute
+  '/growth': typeof AuthenticatedGrowthRoute
   '/health': typeof AuthenticatedHealthRoute
   '/home': typeof AuthenticatedHomeRoute
   '/money': typeof AuthenticatedMoneyRoute
   '/more': typeof AuthenticatedMoreRoute
   '/review': typeof AuthenticatedReviewRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/public/cron/maintenance': typeof ApiPublicCronMaintenanceRoute
   '/api/public/cron/notify': typeof ApiPublicCronNotifyRoute
+  '/api/public/cron/sync-business-sheets': typeof ApiPublicCronSyncBusinessSheetsRoute
+  '/api/public/cron/telegram-worker': typeof ApiPublicCronTelegramWorkerRoute
   '/api/public/cron/update-investments': typeof ApiPublicCronUpdateInvestmentsRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -142,13 +177,17 @@ export interface FileRoutesById {
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/business': typeof AuthenticatedBusinessRoute
+  '/_authenticated/growth': typeof AuthenticatedGrowthRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/money': typeof AuthenticatedMoneyRoute
   '/_authenticated/more': typeof AuthenticatedMoreRoute
   '/_authenticated/review': typeof AuthenticatedReviewRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/public/cron/maintenance': typeof ApiPublicCronMaintenanceRoute
   '/api/public/cron/notify': typeof ApiPublicCronNotifyRoute
+  '/api/public/cron/sync-business-sheets': typeof ApiPublicCronSyncBusinessSheetsRoute
+  '/api/public/cron/telegram-worker': typeof ApiPublicCronTelegramWorkerRoute
   '/api/public/cron/update-investments': typeof ApiPublicCronUpdateInvestmentsRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -160,13 +199,17 @@ export interface FileRouteTypes {
     | '/activity'
     | '/assistant'
     | '/business'
+    | '/growth'
     | '/health'
     | '/home'
     | '/money'
     | '/more'
     | '/review'
     | '/api/chat'
+    | '/api/public/cron/maintenance'
     | '/api/public/cron/notify'
+    | '/api/public/cron/sync-business-sheets'
+    | '/api/public/cron/telegram-worker'
     | '/api/public/cron/update-investments'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -176,13 +219,17 @@ export interface FileRouteTypes {
     | '/activity'
     | '/assistant'
     | '/business'
+    | '/growth'
     | '/health'
     | '/home'
     | '/money'
     | '/more'
     | '/review'
     | '/api/chat'
+    | '/api/public/cron/maintenance'
     | '/api/public/cron/notify'
+    | '/api/public/cron/sync-business-sheets'
+    | '/api/public/cron/telegram-worker'
     | '/api/public/cron/update-investments'
     | '/api/public/telegram/webhook'
   id:
@@ -193,13 +240,17 @@ export interface FileRouteTypes {
     | '/_authenticated/activity'
     | '/_authenticated/assistant'
     | '/_authenticated/business'
+    | '/_authenticated/growth'
     | '/_authenticated/health'
     | '/_authenticated/home'
     | '/_authenticated/money'
     | '/_authenticated/more'
     | '/_authenticated/review'
     | '/api/chat'
+    | '/api/public/cron/maintenance'
     | '/api/public/cron/notify'
+    | '/api/public/cron/sync-business-sheets'
+    | '/api/public/cron/telegram-worker'
     | '/api/public/cron/update-investments'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
@@ -209,7 +260,10 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiPublicCronMaintenanceRoute: typeof ApiPublicCronMaintenanceRoute
   ApiPublicCronNotifyRoute: typeof ApiPublicCronNotifyRoute
+  ApiPublicCronSyncBusinessSheetsRoute: typeof ApiPublicCronSyncBusinessSheetsRoute
+  ApiPublicCronTelegramWorkerRoute: typeof ApiPublicCronTelegramWorkerRoute
   ApiPublicCronUpdateInvestmentsRoute: typeof ApiPublicCronUpdateInvestmentsRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -279,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHealthRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/growth': {
+      id: '/_authenticated/growth'
+      path: '/growth'
+      fullPath: '/growth'
+      preLoaderRoute: typeof AuthenticatedGrowthRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/business': {
       id: '/_authenticated/business'
       path: '/business'
@@ -314,11 +375,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronUpdateInvestmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/telegram-worker': {
+      id: '/api/public/cron/telegram-worker'
+      path: '/api/public/cron/telegram-worker'
+      fullPath: '/api/public/cron/telegram-worker'
+      preLoaderRoute: typeof ApiPublicCronTelegramWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/sync-business-sheets': {
+      id: '/api/public/cron/sync-business-sheets'
+      path: '/api/public/cron/sync-business-sheets'
+      fullPath: '/api/public/cron/sync-business-sheets'
+      preLoaderRoute: typeof ApiPublicCronSyncBusinessSheetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/notify': {
       id: '/api/public/cron/notify'
       path: '/api/public/cron/notify'
       fullPath: '/api/public/cron/notify'
       preLoaderRoute: typeof ApiPublicCronNotifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/maintenance': {
+      id: '/api/public/cron/maintenance'
+      path: '/api/public/cron/maintenance'
+      fullPath: '/api/public/cron/maintenance'
+      preLoaderRoute: typeof ApiPublicCronMaintenanceRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -328,6 +410,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedBusinessRoute: typeof AuthenticatedBusinessRoute
+  AuthenticatedGrowthRoute: typeof AuthenticatedGrowthRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedMoneyRoute: typeof AuthenticatedMoneyRoute
@@ -339,6 +422,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedActivityRoute: AuthenticatedActivityRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedBusinessRoute: AuthenticatedBusinessRoute,
+  AuthenticatedGrowthRoute: AuthenticatedGrowthRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedMoneyRoute: AuthenticatedMoneyRoute,
@@ -354,7 +438,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiPublicCronMaintenanceRoute: ApiPublicCronMaintenanceRoute,
   ApiPublicCronNotifyRoute: ApiPublicCronNotifyRoute,
+  ApiPublicCronSyncBusinessSheetsRoute: ApiPublicCronSyncBusinessSheetsRoute,
+  ApiPublicCronTelegramWorkerRoute: ApiPublicCronTelegramWorkerRoute,
   ApiPublicCronUpdateInvestmentsRoute: ApiPublicCronUpdateInvestmentsRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }

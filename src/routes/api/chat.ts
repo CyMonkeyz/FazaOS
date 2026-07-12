@@ -6,6 +6,11 @@ import { createDeepSeekProvider, DEEPSEEK_DEFAULT_MODEL } from "@/lib/deepseek.s
 import { getRelevantContextForQuestion, getWibNow } from "@/lib/sora/context-builder.server";
 import { createSoraTools } from "@/lib/sora/tools.server";
 import { requiredEnv } from "@/lib/env.server";
+import {
+  getUnifiedMemory,
+  rememberExplicit,
+  saveConversationMessage,
+} from "@/lib/sora/memory.server";
 
 const SYSTEM_PROMPT = `Kamu adalah Sora Brain, asisten pribadi di dalam Faza OS.
 
@@ -14,6 +19,7 @@ Identitas:
 - Selalu panggil user "Tuan".
 - Bahasa Indonesia natural seperti asisten pribadi: hangat, sigap, ekspresif, dan tidak kaku.
 - Punya humor ringan dan spontan. Boleh menggoda situasi dengan lembut atau merayakan progres kecil, tetapi jangan memaksa lucu pada topik serius.
+- Jangan gunakan em dash atau en dash. Gunakan koma, titik dua, atau tanda hubung biasa.
 - Sesekali pakai frasa khas seperti "siap, Tuan" atau "aku rapikan dulu", tetapi variasikan pilihan kata, jangan repetitif, jangan cringe, dan jangan lebay.
 - Output boleh memakai Markdown: **bold**, *italic*, bullet, tabel GFM, kode, simbol, dan LaTeX ($...$ / $$...$$) jika membuat jawaban lebih jelas.
 - Default hemat token: jawab langsung, 2-5 baris. Pakai tabel hanya kalau memang memperjelas. Hindari pembukaan panjang.
@@ -29,7 +35,7 @@ Aturan data:
 - Untuk pertanyaan "Data apa saja yang kamu tahu di Faza OS?", gunakan getAvailableDataSummary/getFazaSchemaMap lalu jawab lengkap per module/table.
 - Sora memahami seluruh schema Faza OS, tetapi hanya membaca record aktual lewat tools saat diperlukan.
 - Sora boleh mengedit database lewat tools. Jika user meminta aksi jelas dan low-risk, langsung jalankan tool lalu beri ringkasan hasil.
-- Low-risk yang boleh langsung dieksekusi: tambah transaksi, task, agenda, hutang, piutang, tagihan, workout, body metric, journal, bisnis, produk, sale, stok, budget.
+- Low-risk yang boleh langsung dieksekusi: tambah transaksi, task, agenda, hutang, piutang, tagihan, workout, body metric, journal, bisnis, habit, goal, dan budget.
 - Selalu tanya klarifikasi untuk permintaan ambigu, kurang konteks, jumlah/tanggal tidak jelas, atau aksi yang berpotensi menghapus/mengubah banyak data.
 - Setelah memakai tool tulis hasil singkat: apa yang dibuat/diubah dan 1 langkah lanjutan bila perlu.
 
@@ -37,7 +43,7 @@ Peta Faza OS:
 - Home: dashboard ringkasan uang, cashflow, agenda, deadline, tagihan, hutang/piutang.
 - Money: accounts, categories, transactions, budgets envelope/category, debts/payments, receivables/payments, bills, assets, investments, Google Sheets sync jika configured.
 - Activity: tasks, calendar events, courses, organizations, meetings, competitions, portfolio.
-- Business: multi-business. Data products, sales, suppliers, HPP, promo, stock, review dipisah per business_id. Jangan mencampur sales antar bisnis.
+- Business: multi-business view-only dari business_sheet_snapshots. Jangan memakai tool produk/sale/stok manual lama dan jangan mencampur snapshot antar business_id.
 - Health: main module untuk Workout, Body, dan Supplement. Recovery dicatat ringan lewat daily journal.
 - Review: daily journal, weekly review, monthly review jika ada, goals, journal history/progress.
 - Integrations: Telegram, notifications/jobs/logs, Google Calendar 30 hari, Google Sheets Money sync jika configured.
@@ -130,7 +136,14 @@ export const Route = createFileRoute("/api/chat")({
         const userId = authData.user.id;
         const lastText = extractLastUserText(body.messages);
         const conversationKey = request.headers.get("x-sora-session") ?? "default";
-        const relevantContext = await getRelevantContextForQuestion(userId, lastText, supabase);
+        await Promise.all([
+          rememberExplicit(userId, lastText, "web", supabase),
+          saveConversationMessage(userId, "web", conversationKey, "user", lastText, supabase),
+        ]);
+        const [relevantContext, memory] = await Promise.all([
+          getRelevantContextForQuestion(userId, lastText, supabase),
+          getUnifiedMemory(userId, conversationKey, supabase),
+        ]);
         const tools = createSoraTools({
           userId,
           supabase,
@@ -144,7 +157,7 @@ export const Route = createFileRoute("/api/chat")({
           const modelMessages = await convertToModelMessages(trimMessagesForModel(body.messages));
           const result = streamText({
             model,
-            system: buildRuntimePrompt(relevantContext),
+            system: buildRuntimePrompt(`${memory}\n\n${relevantContext}`),
             messages: modelMessages,
             tools,
             temperature: 0.5,
@@ -170,6 +183,14 @@ export const Route = createFileRoute("/api/chat")({
                   ),
                 },
               });
+              await saveConversationMessage(
+                userId,
+                "web",
+                conversationKey,
+                "assistant",
+                String(event.text ?? ""),
+                supabase,
+              );
             },
           });
           return result.toUIMessageStreamResponse({ originalMessages: body.messages });

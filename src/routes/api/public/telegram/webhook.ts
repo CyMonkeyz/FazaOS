@@ -85,12 +85,41 @@ async function requireLinked(chatId: number): Promise<string | null> {
 }
 
 async function runSoraSafely(chatId: number, userId: string, text: string) {
+  const sb = admin() as any;
+  const { data: job } = await sb
+    .from("telegram_jobs")
+    .insert({
+      user_id: userId,
+      chat_id: String(chatId),
+      job_type: "sora_message",
+      payload: { text },
+      status: "processing",
+      scheduled_at: new Date().toISOString(),
+      started_at: new Date().toISOString(),
+    })
+    .select("id")
+    .maybeSingle();
   try {
     // Netlify may freeze/terminate work as soon as the webhook response is returned.
     // Keep the request alive until Sora has edited the placeholder with a final reply.
     await handleSoraText(chatId, userId, text);
+    if (job?.id)
+      await sb
+        .from("telegram_jobs")
+        .update({ status: "completed", finished_at: new Date().toISOString() })
+        .eq("id", job.id);
   } catch (err) {
     console.error("[sora telegram]", err);
+    if (job?.id)
+      await sb
+        .from("telegram_jobs")
+        .update({
+          status: "queued",
+          attempts: 1,
+          last_error: err instanceof Error ? err.message : String(err),
+          next_attempt_at: new Date(Date.now() + 60_000).toISOString(),
+        })
+        .eq("id", job.id);
     try {
       await sendMessage(
         chatId,

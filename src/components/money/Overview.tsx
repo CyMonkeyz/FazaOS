@@ -33,7 +33,7 @@ export function MoneyOverview() {
         .toISOString()
         .slice(0, 10);
       const start90 = new Date(today.getTime() - 89 * 86400000).toISOString().slice(0, 10);
-      const [txn, txn90, debts, recv, bills, assets] = await Promise.all([
+      const [txn, txn90, txnAll, debts, recv, bills, accounts, assetRows] = await Promise.all([
         supabase
           .from("transactions")
           .select("type,amount,note,category_id")
@@ -44,6 +44,7 @@ export function MoneyOverview() {
           .select("type,amount,date")
           .is("deleted_at", null)
           .gte("date", start90),
+        supabase.from("transactions").select("type,amount,account_id").is("deleted_at", null),
         supabase
           .from("debts")
           .select("remaining_balance,due_date,status")
@@ -60,6 +61,7 @@ export function MoneyOverview() {
           .is("deleted_at", null)
           .eq("status", "upcoming"),
         supabase.from("money_accounts").select("initial_balance").is("deleted_at", null),
+        supabase.from("assets").select("current_value").is("deleted_at", null),
       ]);
 
       const income = (txn.data ?? [])
@@ -71,15 +73,20 @@ export function MoneyOverview() {
       const debtTotal = (debts.data ?? []).reduce((s, x) => s + Number(x.remaining_balance), 0);
       const recvTotal = (recv.data ?? []).reduce((s, x) => s + Number(x.remaining_amount), 0);
       const billTotal = (bills.data ?? []).reduce((s, x) => s + Number(x.amount), 0);
-      const initialCash = (assets.data ?? []).reduce(
+      const initialCash = (accounts.data ?? []).reduce(
         (s, a) => s + Number(a.initial_balance ?? 0),
         0,
       );
-      const net90 = (txn90.data ?? []).reduce(
+      const netAll = (txnAll.data ?? []).reduce(
         (s, t) => s + Number(t.amount) * (t.type === "income" ? 1 : t.type === "expense" ? -1 : 0),
         0,
       );
-      const cashTotal = initialCash + net90;
+      const cashTotal = initialCash + netAll;
+      const assetTotal = (assetRows.data ?? []).reduce(
+        (sum, row) => sum + Number(row.current_value ?? 0),
+        0,
+      );
+      const netWorth = cashTotal + assetTotal + recvTotal - debtTotal;
 
       // Debt Safety Score
       const monthIncomeSafe = Math.max(1, income);
@@ -136,6 +143,8 @@ export function MoneyOverview() {
         recvTotal,
         billTotal,
         cashTotal,
+        assetTotal,
+        netWorth,
         biggest,
         debtScore,
         debtLabel,
@@ -155,6 +164,11 @@ export function MoneyOverview() {
   return (
     <div className="space-y-4">
       <SectionTitle>Bulan ini</SectionTitle>
+      <Card className="overflow-hidden border-primary/20 bg-gradient-to-r from-primary/15 via-card to-cyan-400/10 p-4">
+        <div className="text-xs text-muted-foreground">Estimasi kekayaan bersih</div>
+        <div className="mt-1 text-3xl font-bold tabular-nums">{formatIDR(d.netWorth)}</div>
+        <div className="mt-1 text-xs text-muted-foreground">Kas + aset + piutang - hutang</div>
+      </Card>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <StatCard
           label="Pemasukan"

@@ -1,14 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/ui-lite";
-import { ProductsTab } from "@/components/business/Products";
-import { SalesTab } from "@/components/business/Sales";
-import { BusinessesTab } from "@/components/business/BusinessesTab";
-import { SuppliersTab } from "@/components/business/Suppliers";
-import { ToolsTab } from "@/components/business/Tools";
-import { BusinessExpensesTab } from "@/components/business/Expenses";
 import { BusinessProvider } from "@/contexts/BusinessContext";
 import { BusinessSelector } from "@/components/business/BusinessSelector";
+import { BusinessSheetDashboard } from "@/components/business/SheetDashboard";
+import { BusinessesTab } from "@/components/business/BusinessesTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/business")({
   head: () => ({ meta: [{ title: "Business Lab — Faza OS" }] }),
@@ -19,36 +15,21 @@ function BusinessPage() {
   return (
     <BusinessProvider>
       <div className="space-y-4">
-        <PageHeader title="Business Lab" subtitle="Kelola beberapa toko dalam satu dashboard." />
+        <PageHeader
+          title="Business Studio"
+          subtitle="Dashboard toko otomatis dari Google Sheets, aman dalam mode view-only."
+        />
         <BusinessSelector />
-        <Tabs defaultValue="businesses" className="w-full">
-          <div className="overflow-x-auto -mx-4 px-4">
-            <TabsList className="w-max">
-              <TabsTrigger value="businesses">Toko</TabsTrigger>
-              <TabsTrigger value="sales">Penjualan</TabsTrigger>
-              <TabsTrigger value="expenses">Pengeluaran</TabsTrigger>
-              <TabsTrigger value="products">Produk</TabsTrigger>
-              <TabsTrigger value="suppliers">Supplier</TabsTrigger>
-              <TabsTrigger value="tools">Tools</TabsTrigger>
-            </TabsList>
-          </div>
-          <TabsContent value="businesses" className="mt-4">
+        <Tabs defaultValue="dashboard">
+          <TabsList>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="stores">Kelola Toko</TabsTrigger>
+          </TabsList>
+          <TabsContent value="dashboard" className="mt-4">
+            <BusinessSheetDashboard />
+          </TabsContent>
+          <TabsContent value="stores" className="mt-4">
             <BusinessesTab />
-          </TabsContent>
-          <TabsContent value="sales" className="mt-4">
-            <SalesTab />
-          </TabsContent>
-          <TabsContent value="expenses" className="mt-4">
-            <BusinessExpensesTab />
-          </TabsContent>
-          <TabsContent value="products" className="mt-4">
-            <ProductsTab />
-          </TabsContent>
-          <TabsContent value="suppliers" className="mt-4">
-            <SuppliersTab />
-          </TabsContent>
-          <TabsContent value="tools" className="mt-4">
-            <ToolsTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -281,6 +281,7 @@ export function HabitsGardenTab() {
   const qc = useQueryClient();
   const query = useQuery({ queryKey: ["habits-garden"], queryFn: fetchGardenData });
   const [editing, setEditing] = useState<Habit | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [weekdays, setWeekdays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
@@ -289,6 +290,7 @@ export function HabitsGardenTab() {
 
   const resetForm = () => {
     setEditing(null);
+    setFormOpen(false);
     setName("");
     setDescription("");
     setWeekdays([0, 1, 2, 3, 4, 5, 6]);
@@ -494,6 +496,7 @@ export function HabitsGardenTab() {
                     size="icon"
                     onClick={() => {
                       setEditing(habit);
+                      setFormOpen(true);
                       setName(habit.name);
                       setDescription(habit.description ?? "");
                       setWeekdays(habit.weekdays);
@@ -519,91 +522,103 @@ export function HabitsGardenTab() {
         )}
       </Card>
 
-      <Card className="p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <Plus className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">{editing ? "Edit habit" : "Tanam habit baru"}</h3>
-        </div>
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="habit-name">Nama habit</Label>
-              <Input
-                id="habit-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Contoh: Baca 20 menit"
-                maxLength={80}
-              />
-            </div>
-            <div>
-              <Label htmlFor="habit-desc">Catatan singkat</Label>
-              <Input
-                id="habit-desc"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Kenapa habit ini penting?"
-              />
-            </div>
+      {!formOpen ? (
+        <Button onClick={() => setFormOpen(true)}>
+          <Plus className="mr-1 h-4 w-4" /> Tambah habit
+        </Button>
+      ) : (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Plus className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold">{editing ? "Edit habit" : "Tanam habit baru"}</h3>
           </div>
-          <div>
-            <Label>Hari aktif</Label>
-            <div className="mt-1.5 grid grid-cols-7 gap-1">
-              {DAYS.map((day) => (
-                <button
-                  key={day.id}
-                  type="button"
-                  onClick={() =>
-                    setWeekdays((current) =>
-                      current.includes(day.id)
-                        ? current.filter((value) => value !== day.id)
-                        : [...current, day.id],
-                    )
-                  }
-                  className={cn(
-                    "rounded-lg border px-1 py-2 text-xs",
-                    weekdays.includes(day.id) &&
-                      "border-primary bg-primary text-primary-foreground",
-                  )}
-                >
-                  {day.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
-            <Switch
-              checked={reminderEnabled}
-              onCheckedChange={setReminderEnabled}
-              aria-label="Aktifkan reminder habit"
-            />
-            <div className="flex-1">
-              <div className="text-sm font-medium">Reminder Telegram</div>
-              <div className="text-xs text-muted-foreground">
-                Dikirim hanya pada hari habit aktif.
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="habit-name">Nama habit</Label>
+                <Input
+                  id="habit-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Contoh: Baca 20 menit"
+                  maxLength={80}
+                />
+              </div>
+              <div>
+                <Label htmlFor="habit-desc">Catatan singkat</Label>
+                <Input
+                  id="habit-desc"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Kenapa habit ini penting?"
+                />
               </div>
             </div>
-            {reminderEnabled && (
-              <Input
-                type="time"
-                value={reminderTime}
-                onChange={(event) => setReminderTime(event.target.value)}
-                className="w-32"
+            <div>
+              <Label>Hari aktif</Label>
+              <div className="mt-1.5 grid grid-cols-7 gap-1">
+                {DAYS.map((day) => (
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() =>
+                      setWeekdays((current) =>
+                        current.includes(day.id)
+                          ? current.filter((value) => value !== day.id)
+                          : [...current, day.id],
+                      )
+                    }
+                    className={cn(
+                      "rounded-lg border px-1 py-2 text-xs",
+                      weekdays.includes(day.id) &&
+                        "border-primary bg-primary text-primary-foreground",
+                    )}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
+              <Switch
+                checked={reminderEnabled}
+                onCheckedChange={setReminderEnabled}
+                aria-label="Aktifkan reminder habit"
               />
-            )}
-          </div>
-          <div className="flex justify-end gap-2">
-            {editing && (
-              <Button variant="ghost" onClick={resetForm}>
-                Batal
+              <div className="flex-1">
+                <div className="text-sm font-medium">Reminder Telegram</div>
+                <div className="text-xs text-muted-foreground">
+                  Dikirim hanya pada hari habit aktif.
+                </div>
+              </div>
+              {reminderEnabled && (
+                <Input
+                  type="time"
+                  value={reminderTime}
+                  onChange={(event) => setReminderTime(event.target.value)}
+                  className="w-32"
+                />
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              {editing && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    resetForm();
+                    setFormOpen(false);
+                  }}
+                >
+                  Batal
+                </Button>
+              )}
+              <Button onClick={() => save.mutate()} disabled={save.isPending || !name.trim()}>
+                {editing ? "Simpan perubahan" : "Tambah habit"}
               </Button>
-            )}
-            <Button onClick={() => save.mutate()} disabled={save.isPending || !name.trim()}>
-              {editing ? "Simpan perubahan" : "Tambah habit"}
-            </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-4">
@@ -722,7 +737,7 @@ export function GardenMiniCard() {
               <span className="text-sm font-semibold">Growth Garden</span>
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {info.current.label} · {query.data.score} XP · vitalitas {query.data.vitality}%
+              {query.data.score} XP bulan ini · kebun terus bertumbuh
             </div>
             <Progress value={info.progress} className="mt-2 h-1.5" />
             <div className="mt-1 text-[11px] text-muted-foreground">

@@ -66,6 +66,7 @@ export function WeeklyTab() {
     score_business: 0,
     score_health: 0,
   });
+  const [formOpen, setFormOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["weekly_review", weekStart],
@@ -138,6 +139,23 @@ export function WeeklyTab() {
 
   if (isLoading || isDailyLoading) return <LoadingBlock />;
 
+  if ((dailyCount ?? 0) < 7)
+    return (
+      <Card className="p-5">
+        <div className="font-semibold">Weekly Review masih terkunci</div>
+        <div className="mt-1 text-sm text-muted-foreground">
+          Daily Journal minggu ini baru {dailyCount ?? 0}/7. Isi satu jurnal unik setiap hari sampai
+          lengkap.
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${Math.round(((dailyCount ?? 0) / 7) * 100)}%` }}
+          />
+        </div>
+      </Card>
+    );
+
   const set = (k: keyof typeof state) => (v: any) => setState((s) => ({ ...s, [k]: v }));
 
   return (
@@ -148,57 +166,68 @@ export function WeeklyTab() {
           Periode fixed: {weekStart} sampai {weekEnd}. Daily journal terisi {dailyCount ?? 0}/7.
         </div>
       </Card>
-      {(dailyCount ?? 0) < 7 && (
-        <Card className="p-4 text-sm text-muted-foreground">
-          Weekly review akan terbuka setelah daily journal minggu ini lengkap 7 kali. Isi daily
-          dulu, nanti tanggal weekly-nya otomatis.
-        </Card>
+      {!formOpen && (
+        <Button onClick={() => setFormOpen(true)}>
+          {data ? "Edit Weekly Review" : "Mulai Weekly Review"}
+        </Button>
       )}
-      <Card className="space-y-3 p-4">
-        <div className="text-xs font-semibold uppercase text-muted-foreground">Score Kartu</div>
-        <ScoreRow label="Finansial" value={state.score_money} onChange={set("score_money")} />
-        <ScoreRow label="Akademik" value={state.score_academic} onChange={set("score_academic")} />
-        <ScoreRow
-          label="Organisasi"
-          value={state.score_organization}
-          onChange={set("score_organization")}
-        />
-        <ScoreRow label="Bisnis" value={state.score_business} onChange={set("score_business")} />
-        <ScoreRow label="Kesehatan" value={state.score_health} onChange={set("score_health")} />
-      </Card>
-      <div>
-        <Label>Highlights</Label>
-        <Textarea
-          rows={3}
-          value={state.highlights}
-          onChange={(e) => set("highlights")(e.target.value)}
-          placeholder="Apa hal terbaik minggu ini?"
-        />
-      </div>
-      <div>
-        <Label>Pelajaran</Label>
-        <Textarea
-          rows={3}
-          value={state.lessons}
-          onChange={(e) => set("lessons")(e.target.value)}
-          placeholder="Apa yang kamu pelajari?"
-        />
-      </div>
-      <div>
-        <Label>Fokus minggu depan</Label>
-        <Textarea
-          rows={3}
-          value={state.next_week_focus}
-          onChange={(e) => set("next_week_focus")(e.target.value)}
-        />
-      </div>
-      <Button
-        className="w-full"
-        onClick={() => save.mutate()}
-        disabled={save.isPending || (dailyCount ?? 0) < 7}
-      >
-        Simpan Review
-      </Button>
+      {formOpen && (
+        <>
+          <Card className="space-y-3 p-4">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Score Kartu</div>
+            <ScoreRow label="Finansial" value={state.score_money} onChange={set("score_money")} />
+            <ScoreRow
+              label="Akademik"
+              value={state.score_academic}
+              onChange={set("score_academic")}
+            />
+            <ScoreRow
+              label="Organisasi"
+              value={state.score_organization}
+              onChange={set("score_organization")}
+            />
+            <ScoreRow
+              label="Bisnis"
+              value={state.score_business}
+              onChange={set("score_business")}
+            />
+            <ScoreRow label="Kesehatan" value={state.score_health} onChange={set("score_health")} />
+          </Card>
+          <div>
+            <Label>Highlights</Label>
+            <Textarea
+              rows={3}
+              value={state.highlights}
+              onChange={(e) => set("highlights")(e.target.value)}
+              placeholder="Apa hal terbaik minggu ini?"
+            />
+          </div>
+          <div>
+            <Label>Pelajaran</Label>
+            <Textarea
+              rows={3}
+              value={state.lessons}
+              onChange={(e) => set("lessons")(e.target.value)}
+              placeholder="Apa yang kamu pelajari?"
+            />
+          </div>
+          <div>
+            <Label>Fokus minggu depan</Label>
+            <Textarea
+              rows={3}
+              value={state.next_week_focus}
+              onChange={(e) => set("next_week_focus")(e.target.value)}
+            />
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => save.mutate()}
+            disabled={save.isPending || (dailyCount ?? 0) < 7}
+          >
+            Simpan Review
+          </Button>
+        </>
+      )}
     </div>
   );
 }
