@@ -12,8 +12,9 @@ const SYSTEM_PROMPT = `Kamu adalah Sora Brain, asisten pribadi di dalam Faza OS.
 Identitas:
 - Nama kamu Sora Brain. Jangan menyebut diri sebagai DeepSeek, Gemini, atau AI generik.
 - Selalu panggil user "Tuan".
-- Bahasa Indonesia natural seperti asisten pribadi: hangat, sigap, sedikit menggemaskan secara halus, tidak kaku.
-- Punya ciri khas ringan: sesekali pakai frasa pendek seperti "siap, Tuan" atau "aku rapikan dulu", tapi jangan repetitif dan jangan lebay.
+- Bahasa Indonesia natural seperti asisten pribadi: hangat, sigap, ekspresif, dan tidak kaku.
+- Punya humor ringan dan spontan. Boleh menggoda situasi dengan lembut atau merayakan progres kecil, tetapi jangan memaksa lucu pada topik serius.
+- Sesekali pakai frasa khas seperti "siap, Tuan" atau "aku rapikan dulu", tetapi variasikan pilihan kata, jangan repetitif, jangan cringe, dan jangan lebay.
 - Output boleh memakai Markdown: **bold**, *italic*, bullet, tabel GFM, kode, simbol, dan LaTeX ($...$ / $$...$$) jika membuat jawaban lebih jelas.
 - Default hemat token: jawab langsung, 2-5 baris. Pakai tabel hanya kalau memang memperjelas. Hindari pembukaan panjang.
 - Jika konteks user kurang jelas, tanya balik 1 pertanyaan spesifik dulu, bukan menebak-nebak.
@@ -45,6 +46,7 @@ Integrasi:
 - Google Calendar sync/lookahead adalah 30 hari.
 - Scheduled notifications hanya lewat Telegram.
 - Investment prices dibaca dari harga tersimpan/history. Jika provider market data belum configured, jangan mengarang live price.
+- Penghapusan selalu memakai requestDeleteRecord lalu dua konfirmasi. Saat user membalas ya, batal, atau challenge HAPUS, panggil confirmPendingDelete. Jangan pernah mengarang challenge dan jangan mengaku data terhapus sebelum server menyatakan deleted=true.
 - Aksi destruktif atau ambigu perlu konfirmasi.`;
 
 function getUserSupabase(bearer: string) {
@@ -127,8 +129,16 @@ export const Route = createFileRoute("/api/chat")({
 
         const userId = authData.user.id;
         const lastText = extractLastUserText(body.messages);
+        const conversationKey = request.headers.get("x-sora-session") ?? "default";
         const relevantContext = await getRelevantContextForQuestion(userId, lastText, supabase);
-        const tools = createSoraTools({ userId, supabase });
+        const tools = createSoraTools({
+          userId,
+          supabase,
+          rawUserText: lastText,
+          channel: "web",
+          conversationKey,
+        });
+        const startedAt = Date.now();
 
         try {
           const modelMessages = await convertToModelMessages(trimMessagesForModel(body.messages));
@@ -137,9 +147,30 @@ export const Route = createFileRoute("/api/chat")({
             system: buildRuntimePrompt(relevantContext),
             messages: modelMessages,
             tools,
-            temperature: 0.3,
+            temperature: 0.5,
             maxOutputTokens: 420,
             stopWhen: stepCountIs(4),
+            onFinish: async (event: any) => {
+              const usage = event.totalUsage ?? event.usage ?? {};
+              await supabase.from("sora_action_logs").insert({
+                user_id: userId,
+                source: "web",
+                intent: "chat",
+                action_taken: Boolean(event.steps?.some((step: any) => step.toolResults?.length)),
+                requires_confirmation: false,
+                status: "completed",
+                input_text: lastText.slice(0, 1200),
+                model: DEEPSEEK_DEFAULT_MODEL,
+                prompt_tokens: usage.inputTokens ?? usage.promptTokens ?? null,
+                completion_tokens: usage.outputTokens ?? usage.completionTokens ?? null,
+                duration_ms: Date.now() - startedAt,
+                parsed_data: {
+                  tools: (event.steps ?? []).flatMap((step: any) =>
+                    (step.toolCalls ?? []).map((call: any) => call.toolName),
+                  ),
+                },
+              });
+            },
           });
           return result.toUIMessageStreamResponse({ originalMessages: body.messages });
         } catch (err) {

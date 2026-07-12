@@ -35,6 +35,9 @@ import {
   Eye,
   ShieldAlert,
   Trash2,
+  Briefcase,
+  HeartPulse,
+  LineChart,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -46,119 +49,41 @@ type UiCommand = {
   command: string;
   description: string;
   category: string;
-  example?: string;
-  implemented?: boolean;
 };
 const UI_COMMANDS: UiCommand[] = [
-  {
-    command: "menu",
-    description: "Menu utama & daftar command",
-    category: "Basic",
-    implemented: true,
-  },
-  { command: "help", description: "Bantuan lengkap", category: "Basic", implemented: true },
-  { command: "unlink", description: "Putuskan akun", category: "Basic", implemented: true },
-  {
-    command: "brief",
-    description: "Brief harian sekarang",
-    category: "Hari Ini",
-    implemented: true,
-  },
-  { command: "today", description: "Ringkasan hari ini", category: "Hari Ini", implemented: true },
-  { command: "fokus", description: "Today Focus", category: "Hari Ini", implemented: true },
-  { command: "jadwal", description: "Agenda hari ini", category: "Agenda", implemented: true },
-  { command: "agenda", description: "Agenda 3 hari", category: "Agenda", implemented: true },
-  {
-    command: "agenda_minggu",
-    description: "Agenda 30 hari",
-    category: "Agenda",
-    implemented: true,
-  },
-  { command: "uang", description: "Ringkasan keuangan", category: "Money", implemented: true },
-  {
-    command: "catat",
-    description: "Catat pengeluaran",
-    category: "Money",
-    example: "/catat 25000 kopi",
-    implemented: true,
-  },
-  {
-    command: "pemasukan",
-    description: "Catat pemasukan",
-    category: "Money",
-    example: "/pemasukan 500000 freelance",
-    implemented: true,
-  },
-  { command: "hutang", description: "Hutang aktif", category: "Debt", implemented: true },
-  { command: "piutang", description: "Piutang aktif", category: "Debt", implemented: true },
-  { command: "tagihan", description: "Tagihan mendekat", category: "Debt", implemented: true },
-  { command: "tugas", description: "Tugas mendekat", category: "Academic", implemented: true },
-  {
-    command: "tugas_baru",
-    description: "Tambah tugas",
-    category: "Academic",
-    example: "/tugas_baru Judul | 2026-07-15",
-    implemented: true,
-  },
-  { command: "bisnis", description: "Ringkasan bisnis", category: "Business", implemented: true },
-  {
-    command: "health",
-    description: "Workout & health hari ini",
-    category: "Health",
-    implemented: true,
-  },
-  { command: "workout", description: "Workout hari ini", category: "Health", implemented: true },
-  {
-    command: "workout_done",
-    description: "Tandai workout selesai",
-    category: "Health",
-    implemented: true,
-  },
-  { command: "workout_skip", description: "Skip workout", category: "Health", implemented: true },
-  {
-    command: "berat",
-    description: "Catat berat badan",
-    category: "Health",
-    example: "/berat 70.5",
-    implemented: true,
-  },
-  {
-    command: "tidur",
-    description: "Catat tidur",
-    category: "Health",
-    example: "/tidur 7 kualitas 4",
-    implemented: true,
-  },
-  {
-    command: "air",
-    description: "Catat air minum",
-    category: "Health",
-    example: "/air 2.5",
-    implemented: true,
-  },
-  { command: "body", description: "Body metrics", category: "Health", implemented: true },
-  { command: "notif", description: "Status notifikasi", category: "Notifikasi", implemented: true },
-  {
-    command: "notif_on",
-    description: "Aktifkan notifikasi",
-    category: "Notifikasi",
-    implemented: true,
-  },
-  {
-    command: "notif_off",
-    description: "Matikan notifikasi",
-    category: "Notifikasi",
-    implemented: true,
-  },
-  {
-    command: "quiet",
-    description: "Quiet hours",
-    category: "Notifikasi",
-    example: "/quiet 22:00 05:30",
-    implemented: true,
-  },
-  { command: "sora", description: "Menu Sora Brain", category: "Sora Brain", implemented: true },
+  { command: "start", description: "Hubungkan Telegram", category: "Dasar" },
+  { command: "menu", description: "Menu ringkas", category: "Dasar" },
+  { command: "unlink", description: "Putuskan akun", category: "Dasar" },
+  { command: "brief", description: "Brief harian", category: "Hari Ini" },
+  { command: "today", description: "Ringkasan hari ini", category: "Hari Ini" },
+  { command: "fokus", description: "Fokus utama", category: "Hari Ini" },
+  { command: "jadwal", description: "Jadwal hari ini", category: "Agenda" },
+  { command: "agenda", description: "Agenda 3 hari", category: "Agenda" },
+  { command: "notif", description: "Pengaturan notifikasi", category: "Notifikasi" },
+  { command: "notif_on", description: "Aktifkan notifikasi", category: "Notifikasi" },
+  { command: "notif_off", description: "Matikan notifikasi", category: "Notifikasi" },
 ];
+
+const MODULE_LINKS = [
+  {
+    to: "/business",
+    label: "Bisnis",
+    icon: Briefcase,
+    tone: "bg-amber-500/10 text-amber-700",
+  },
+  {
+    to: "/health",
+    label: "Kesehatan",
+    icon: HeartPulse,
+    tone: "bg-rose-500/10 text-rose-700",
+  },
+  {
+    to: "/review",
+    label: "Evaluasi",
+    icon: LineChart,
+    tone: "bg-sky-500/10 text-sky-700",
+  },
+] as const;
 
 export const Route = createFileRoute("/_authenticated/more")({
   head: () => ({ meta: [{ title: "More — Faza OS" }] }),
@@ -301,7 +226,34 @@ function MorePage() {
 
   return (
     <div className="space-y-6 pb-4">
-      <PageHeader title="More" subtitle="Integrasi, command bot, dan pengaturan." />
+      <PageHeader title="Lainnya" subtitle="Modul, integrasi, dan pengaturan akun." />
+
+      <section aria-labelledby="module-title">
+        <div className="mb-2 flex items-center justify-between">
+          <h2
+            id="module-title"
+            className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
+            Modul lainnya
+          </h2>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {MODULE_LINKS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="group rounded-xl border bg-card p-3 text-center transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm"
+            >
+              <div
+                className={`mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl ${item.tone}`}
+              >
+                <item.icon className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-medium">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Sora Brain */}
       <Link to="/assistant" className="block">
@@ -440,6 +392,7 @@ function MorePage() {
                 ["notify_debt_due", "💳 Hutang jatuh tempo"],
                 ["notify_receivable_due", "💰 Piutang jatuh tempo"],
                 ["notify_deadline", "⏰ Deadline tugas urgent"],
+                ["notify_habits", "🌱 Pengingat habit"],
               ] as const
             ).map(([key, label]) => (
               <label

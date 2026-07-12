@@ -3,11 +3,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import {
   sendMessage,
-  MAIN_KEYBOARD,
+  REMOVE_KEYBOARD,
   fmtRp,
   registerBotCommands,
   isTelegramConfigured,
-  BOT_COMMANDS,
+  PUBLIC_BOT_COMMANDS,
 } from "./telegram-bot.server";
 import { getUpcomingGoogleCalendarEvents } from "./google-calendar.server";
 
@@ -24,7 +24,7 @@ export const sendTelegramTest = createServerFn({ method: "POST" })
     await sendMessage(
       Number(link.chat_id),
       "✅ <b>Faza OS</b> terhubung. Test message dari Tuan.",
-      { reply_markup: MAIN_KEYBOARD },
+      { reply_markup: REMOVE_KEYBOARD },
     );
     return { ok: true };
   });
@@ -134,7 +134,7 @@ export const sendDailyDigest = createServerFn({ method: "POST" })
       for (const b of bills.data!)
         msg += `  • ${b.name}: ${fmtRp(Number(b.amount))} (${b.due_date})\n`;
     }
-    await sendMessage(Number(link.chat_id), msg, { reply_markup: MAIN_KEYBOARD });
+    await sendMessage(Number(link.chat_id), msg);
     return { ok: true };
   });
 
@@ -144,7 +144,7 @@ export const registerTelegramCommands = createServerFn({ method: "POST" })
   .handler(async () => {
     if (!isTelegramConfigured()) throw new Error("Telegram belum dikonfigurasi.");
     await registerBotCommands();
-    return { ok: true, count: BOT_COMMANDS.length };
+    return { ok: true, count: PUBLIC_BOT_COMMANDS.length };
   });
 
 /** Return real integration status (Telegram + Google Calendar) — no static "Terhubung". */
@@ -192,6 +192,7 @@ export type NotifPrefs = {
   notify_debt_due: boolean;
   notify_receivable_due: boolean;
   notify_deadline: boolean;
+  notify_habits: boolean;
   show_amounts_in_telegram: boolean;
   quiet_hours_enabled: boolean;
   quiet_hours_start: string | null;
@@ -205,7 +206,7 @@ export const getNotifPrefs = createServerFn({ method: "GET" })
     const { data } = await supabase
       .from("user_preferences")
       .select(
-        "notify_morning_brief,notify_midday_check,notify_night_review,notify_workout,notify_debt_due,notify_receivable_due,notify_deadline,show_amounts_in_telegram,quiet_hours_enabled,quiet_hours_start,quiet_hours_end",
+        "notify_morning_brief,notify_midday_check,notify_night_review,notify_workout,notify_debt_due,notify_receivable_due,notify_deadline,notify_habits,show_amounts_in_telegram,quiet_hours_enabled,quiet_hours_start,quiet_hours_end",
       )
       .eq("user_id", userId)
       .maybeSingle();

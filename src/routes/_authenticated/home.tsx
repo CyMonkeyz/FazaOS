@@ -43,6 +43,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Card as ChartCard } from "@/components/ui/card";
+import { GardenMiniCard } from "@/components/review/HabitsGarden";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({ meta: [{ title: "Home — Faza OS" }] }),
@@ -260,6 +261,8 @@ function HomePage() {
           )}
         </div>
       </Card>
+
+      <GardenMiniCard />
 
       {/* Money Status */}
       <div>

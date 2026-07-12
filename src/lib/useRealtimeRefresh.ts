@@ -33,6 +33,10 @@ const REALTIME_TABLES = [
   "daily_logs",
   "weekly_reviews",
   "goals",
+  "habits",
+  "habit_logs",
+  "garden_seasons",
+  "garden_events",
 ] as const;
 
 export function useRealtimeRefresh() {

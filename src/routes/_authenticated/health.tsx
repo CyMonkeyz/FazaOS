@@ -307,9 +307,14 @@ function SupplementTab() {
   if (error) {
     return (
       <EmptyState
-        title="Supplement belum aktif"
-        description="Struktur modulnya belum ada di database saat ini. Aku bisa bantu Codex menambahkannya."
+        title="Data suplemen belum bisa dimuat"
+        description="Periksa koneksi lalu coba lagi. Jika tetap gagal, pastikan migrasi database terbaru sudah diterapkan."
         icon={Pill}
+        action={
+          <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
+            Coba lagi
+          </Button>
+        }
       />
     );
   }

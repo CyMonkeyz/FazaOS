@@ -8,8 +8,9 @@ import { Card } from "@/components/ui/card";
 import { DailyLogTab } from "@/components/review/DailyLog";
 import { WeeklyTab } from "@/components/review/Weekly";
 import { GoalsTab } from "@/components/review/Goals";
+import { GardenMiniCard, HabitsGardenTab } from "@/components/review/HabitsGarden";
 import { supabase } from "@/integrations/supabase/client";
-import { Flower2, History, Sprout } from "lucide-react";
+import { History, Sprout } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/review")({
   head: () => ({ meta: [{ title: "Review - Faza OS" }] }),
@@ -30,6 +31,7 @@ function ReviewPage() {
             <TabsTrigger value="daily">Daily Journal</TabsTrigger>
             <TabsTrigger value="weekly">Weekly Review</TabsTrigger>
             <TabsTrigger value="goals">Goals</TabsTrigger>
+            <TabsTrigger value="habits">Habits &amp; Garden</TabsTrigger>
             <TabsTrigger value="history">Journal History</TabsTrigger>
           </TabsList>
         </div>
@@ -44,6 +46,9 @@ function ReviewPage() {
         </TabsContent>
         <TabsContent value="goals" className="mt-4">
           <GoalsTab />
+        </TabsContent>
+        <TabsContent value="habits" className="mt-4">
+          <HabitsGardenTab />
         </TabsContent>
         <TabsContent value="history" className="mt-4">
           <JournalHistory />
@@ -111,13 +116,6 @@ function useReviewSummary() {
   });
 }
 
-function plantLabel(streak: number) {
-  if (streak <= 0) return "seed";
-  if (streak <= 2) return "sprout";
-  if (streak <= 5) return "small plant";
-  return "flower";
-}
-
 function ReviewDashboard() {
   const { data, isLoading } = useReviewSummary();
   if (isLoading) return <LoadingBlock />;
@@ -135,14 +133,10 @@ function ReviewDashboard() {
         <StatCard label="Energy avg" value={d.avgEnergy ? d.avgEnergy.toFixed(1) : "-"} />
         <StatCard label="Focus avg" value={d.avgFocus ? d.avgFocus.toFixed(1) : "-"} />
       </div>
-      <Card className="p-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Flower2 className="h-4 w-4 text-primary" /> Progress plant: {plantLabel(d.streak)}
-        </div>
-        <div className="mt-2 text-xs text-muted-foreground">
-          Weekly tersimpan: {d.weekly.length}. Goal aktif: {d.activeGoals.length}. Rata-rata
-          progress goal {Math.round(d.goalAverage)}%.
-        </div>
+      <GardenMiniCard />
+      <Card className="p-4 text-xs text-muted-foreground">
+        Weekly tersimpan: {d.weekly.length}. Goal aktif: {d.activeGoals.length}. Rata-rata progress
+        goal {Math.round(d.goalAverage)}%.
       </Card>
     </div>
   );

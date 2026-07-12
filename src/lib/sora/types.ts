@@ -21,6 +21,9 @@ export type SoraDbClient = SupabaseClient<Database>;
 export type SoraToolContext = {
   userId: string;
   supabase: SoraDbClient;
+  rawUserText?: string;
+  channel?: "web" | "telegram";
+  conversationKey?: string;
 };
 
 export type SoraIntent =

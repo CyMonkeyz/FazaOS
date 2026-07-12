@@ -10,6 +10,7 @@ import { getAvailableDataSummary, getWibNow } from "./context-builder.server";
 import type { SoraModule, SoraToolContext } from "./types";
 import { getUpcomingGoogleCalendarEvents } from "@/lib/google-calendar.server";
 import { searchWeb } from "@/lib/sora/web-search.server";
+import { continueServerDelete, prepareServerDelete } from "./pending-actions.server";
 
 type Filter = [column: string, op: "eq" | "neq" | "gte" | "lte" | "in", value: unknown];
 
@@ -46,6 +47,7 @@ const SOFT_DELETE_TABLES = new Set([
   "daily_logs",
   "weekly_reviews",
   "goals",
+  "habits",
   "workout_plans",
   "workout_logs",
   "workout_goals",
@@ -57,6 +59,74 @@ const SOFT_DELETE_TABLES = new Set([
   "recovery_logs",
   "google_sheets_connections",
 ]);
+
+const SAFE_READ_COLUMNS: Record<string, string> = {
+  notes: "id,title,body,tags,created_at,updated_at",
+  transactions: "id,type,amount,date,note,category_id,account_id",
+  budgets: "id,name,planned_amount,start_date,end_date,status,category_id",
+  debts: "id,lender_name,amount,remaining_balance,due_date,status,notes",
+  receivables: "id,borrower_name,amount,remaining_amount,promised_payment_date,status,notes",
+  bills: "id,name,amount,due_date,status,recurrence,notes",
+  academic_tasks: "id,title,due_date,priority,status,notes,course_id",
+  activity_events: "id,title,kind,starts_at,ends_at,location,notes",
+  courses: "id,name,lecturer,schedule_text,notes",
+  organizations: "id,name,role,kind,status,notes",
+  competitions: "id,title,organizer,deadline,status,result,notes",
+  portfolio_items: "id,title,description,url,status,notes",
+  businesses: "id,name,description,is_active",
+  products: "id,business_id,name,sku,selling_price,current_stock,is_active",
+  sales: "id,business_id,product_name,quantity,total,profit,sold_at",
+  daily_logs: "id,log_date,mood,energy,focus,wins,struggles,gratitude,tomorrow_focus",
+  weekly_reviews: "id,week_start,highlights,lessons,next_week_focus,score_money,score_health",
+  monthly_reviews: "id,month_start,highlights,lessons,next_month_focus,score",
+  goals: "id,title,area,target_date,progress,status,notes",
+  habits: "id,name,description,icon,color,weekdays,reminder_enabled,reminder_time,is_active",
+  habit_logs: "id,habit_id,log_date,completed_at",
+  garden_seasons: "id,season_month,score,stage,vitality,status,final_snapshot",
+  garden_events: "id,season_id,event_date,source_type,points,metadata,created_at",
+  workout_plans: "id,title,workout_date,workout_time,workout_type,duration_minutes,status,notes",
+  workout_logs: "id,workout_date,workout_type,duration_minutes,intensity,notes",
+  body_metrics: "id,metric_date,weight_kg,sleep_hours,sleep_quality,water_liters,steps",
+  supplement_items: "id,name,category,dosage,frequency,stock_quantity,unit",
+};
+
+const SAFE_UPDATE_COLUMNS: Record<string, string[]> = {
+  academic_tasks: ["title", "due_date", "priority", "status", "notes", "course_id"],
+  activity_events: ["title", "kind", "starts_at", "ends_at", "location", "notes"],
+  bills: ["name", "amount", "due_date", "status", "recurrence", "notes"],
+  debts: ["lender_name", "amount", "remaining_balance", "due_date", "status", "notes"],
+  receivables: [
+    "borrower_name",
+    "amount",
+    "remaining_amount",
+    "promised_payment_date",
+    "status",
+    "notes",
+  ],
+  goals: ["title", "area", "target_date", "progress", "status", "notes"],
+  habits: [
+    "name",
+    "description",
+    "icon",
+    "color",
+    "weekdays",
+    "reminder_enabled",
+    "reminder_time",
+    "sort_order",
+    "is_active",
+  ],
+  notes: ["title", "body", "tags"],
+  products: ["name", "sku", "selling_price", "current_stock", "is_active"],
+  workout_plans: [
+    "title",
+    "workout_date",
+    "workout_time",
+    "workout_type",
+    "duration_minutes",
+    "status",
+    "notes",
+  ],
+};
 
 function db(ctx: SoraToolContext) {
   return ctx.supabase as any;
@@ -310,6 +380,60 @@ async function moneyOverview(ctx: SoraToolContext) {
     0,
   );
   return {
+    readUserData: tool({
+      description:
+        "Generic safe reader for allowlisted user-facing Faza OS tables. Always user-scoped, max 20 rows, and text is truncated.",
+      inputSchema: z.object({
+        table: z.enum(Object.keys(SAFE_READ_COLUMNS) as [string, ...string[]]),
+        limit: z.number().int().min(1).max(20).optional(),
+      }),
+      execute: async ({ table, limit }) =>
+        rows(ctx, table, SAFE_READ_COLUMNS[table], { limit: Math.min(limit ?? 10, 20) }),
+    }),
+    updateUserRecord: tool({
+      description:
+        "Update one exact user-owned record. Only allowlisted columns are accepted; never use for deletion.",
+      inputSchema: z.object({
+        table: z.enum(Object.keys(SAFE_UPDATE_COLUMNS) as [string, ...string[]]),
+        recordId: z.string().uuid(),
+        changes: z.record(z.string(), z.unknown()),
+      }),
+      execute: async ({ table, recordId, changes }) => {
+        const allowed = SAFE_UPDATE_COLUMNS[table] ?? [];
+        const safe = Object.fromEntries(
+          Object.entries(changes).filter(([key]) => allowed.includes(key)),
+        );
+        if (!Object.keys(safe).length)
+          return { ok: false, message: "Tidak ada field yang aman untuk diperbarui." };
+        const { data, error } = await db(ctx)
+          .from(table)
+          .update(safe)
+          .eq("id", recordId)
+          .eq("user_id", ctx.userId)
+          .is("deleted_at", null)
+          .select("id")
+          .maybeSingle();
+        return error
+          ? { ok: false, message: error.message }
+          : { ok: Boolean(data), table, recordId, updated: Object.keys(safe) };
+      },
+    }),
+    requestDeleteRecord: tool({
+      description:
+        "Start a server-side two-confirmation soft-delete for one exact record. Never claims deletion yet.",
+      inputSchema: z.object({
+        table: z.string().min(1),
+        recordId: z.string().uuid().optional(),
+        query: z.string().min(1).max(120).optional(),
+      }),
+      execute: async (input) => prepareServerDelete(ctx, input),
+    }),
+    confirmPendingDelete: tool({
+      description:
+        "Continue an existing delete confirmation. Server checks the raw user message; tool arguments cannot bypass it.",
+      inputSchema: z.object({}),
+      execute: async () => continueServerDelete(ctx),
+    }),
     period_start: start,
     income,
     expense,
@@ -1587,6 +1711,76 @@ export function createSoraTools(ctx: SoraToolContext) {
           .maybeSingle();
         if (error) throw error;
         return { daily_log: data };
+      },
+    }),
+    createHabit: tool({
+      description: "Create a habit with active weekdays and an optional Telegram reminder.",
+      inputSchema: z.object({
+        name: z.string().min(1).max(80),
+        description: z.string().max(240).nullable().optional(),
+        icon: z.string().max(8).optional(),
+        color: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
+        weekdays: z.array(z.number().int().min(0).max(6)).min(1).optional(),
+        reminderEnabled: z.boolean().optional(),
+        reminderTime: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/)
+          .nullable()
+          .optional(),
+      }),
+      execute: async (input) => {
+        const { data, error } = await db(ctx)
+          .from("habits")
+          .insert({
+            user_id: ctx.userId,
+            name: input.name,
+            description: input.description ?? null,
+            icon: input.icon ?? "🌱",
+            color: input.color ?? "#22c55e",
+            weekdays: input.weekdays ?? [0, 1, 2, 3, 4, 5, 6],
+            reminder_enabled: input.reminderEnabled ?? false,
+            reminder_time: input.reminderEnabled ? (input.reminderTime ?? "08:00") : null,
+          })
+          .select("id,name,weekdays,reminder_enabled,reminder_time")
+          .maybeSingle();
+        if (error) throw error;
+        return { habit: data };
+      },
+    }),
+    setHabitCompletion: tool({
+      description: "Mark one habit complete or incomplete for a date.",
+      inputSchema: z.object({
+        habitId: z.string().uuid(),
+        date: z.string().optional(),
+        completed: z.boolean().default(true),
+      }),
+      execute: async ({ habitId, date, completed }) => {
+        const logDate = date ?? getWibNow().date;
+        const habit = await maybeSingle(ctx, "habits", "id,name", [["id", "eq", habitId]]);
+        if (!habit.row) return { ok: false, message: "Habit tidak ditemukan." };
+        if (completed) {
+          const { data, error } = await db(ctx)
+            .from("habit_logs")
+            .upsert(
+              { user_id: ctx.userId, habit_id: habitId, log_date: logDate },
+              { onConflict: "habit_id,log_date" },
+            )
+            .select("id,habit_id,log_date")
+            .maybeSingle();
+          if (error) throw error;
+          return { ok: true, completion: data };
+        }
+        const { error } = await db(ctx)
+          .from("habit_logs")
+          .delete()
+          .eq("user_id", ctx.userId)
+          .eq("habit_id", habitId)
+          .eq("log_date", logDate);
+        if (error) throw error;
+        return { ok: true, completed: false, habitId, date: logDate };
       },
     }),
     createWeeklyReview: tool({

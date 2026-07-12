@@ -25,16 +25,8 @@ export async function tgCall(method: string, body: unknown) {
   return data.result;
 }
 
-export const MAIN_KEYBOARD = {
-  keyboard: [
-    [{ text: "Tanya Sora" }, { text: "Brief" }, { text: "Fokus" }],
-    [{ text: "Agenda" }, { text: "Uang" }, { text: "Tugas" }],
-    [{ text: "Health" }, { text: "Tagihan" }, { text: "Bisnis" }],
-    [{ text: "Hutang" }, { text: "Piutang" }, { text: "Menu" }],
-  ],
-  resize_keyboard: true,
-  is_persistent: true,
-};
+/** Removes the legacy persistent reply keyboard from Telegram clients. */
+export const REMOVE_KEYBOARD = { remove_keyboard: true } as const;
 
 export function sendMessage(
   chatId: number | string,
@@ -679,9 +671,27 @@ export const BOT_COMMANDS: BotCommand[] = [
 
 const CATEGORY_ORDER: Record<string, number> = Object.fromEntries(CATEGORIES.map((c, i) => [c, i]));
 
+const PUBLIC_COMMAND_NAMES = new Set([
+  "start",
+  "menu",
+  "unlink",
+  "brief",
+  "today",
+  "fokus",
+  "jadwal",
+  "agenda",
+  "notif",
+  "notif_on",
+  "notif_off",
+]);
+
+export const PUBLIC_BOT_COMMANDS = BOT_COMMANDS.filter((command) =>
+  PUBLIC_COMMAND_NAMES.has(command.command),
+);
+
 export function groupCommandsByCategory(): Array<{ category: string; items: BotCommand[] }> {
   const map = new Map<string, BotCommand[]>();
-  for (const c of BOT_COMMANDS) {
+  for (const c of PUBLIC_BOT_COMMANDS) {
     if (!map.has(c.category)) map.set(c.category, []);
     map.get(c.category)!.push(c);
   }
@@ -695,19 +705,16 @@ export function groupCommandsByCategory(): Array<{ category: string; items: BotC
  */
 export function buildShortMenuMessage(): string {
   return (
-    "<b>Faza OS - Menu</b>\n\n" +
+    "<b>Faza OS — Menu</b>\n<i>Ketik pesan biasa untuk ngobrol dengan Sora.</i>\n\n" +
     "<code>/brief</code> - Brief hari ini\n" +
     "<code>/today</code> - Ringkasan hari ini\n" +
-    "<code>/sora</code> - Tanya Sora\n" +
-    "<code>/catat</code> - Catat uang cepat\n" +
-    "<code>/jadwal</code> - Agenda\n" +
-    "<code>/tugas</code> - Tugas\n" +
-    "<code>/uang</code> - Uang\n" +
-    "<code>/bisnis</code> - Bisnis\n" +
-    "<code>/health</code> - Workout &amp; health\n" +
+    "<code>/fokus</code> - Fokus utama\n" +
+    "<code>/jadwal</code> - Jadwal hari ini\n" +
+    "<code>/agenda</code> - Agenda 3 hari\n" +
     "<code>/notif</code> - Notifikasi\n" +
-    "<code>/help</code> - Bantuan\n" +
-    "<code>/commands</code> - Command lengkap"
+    "<code>/notif_on</code> - Aktifkan notifikasi\n" +
+    "<code>/notif_off</code> - Matikan notifikasi\n" +
+    "<code>/unlink</code> - Putuskan akun"
   );
 }
 
@@ -749,7 +756,7 @@ export function buildMenuMessages(): string[] {
 /** Register bot command list with Telegram (shows up in the / menu in the client). */
 export async function registerBotCommands() {
   // Telegram limits: description up to 256 chars, command lowercase a-z_0-9 up to 32 chars.
-  const commands = BOT_COMMANDS.map((c) => ({
+  const commands = PUBLIC_BOT_COMMANDS.map((c) => ({
     command: c.command.toLowerCase().slice(0, 32),
     description: c.description.slice(0, 256),
   }));

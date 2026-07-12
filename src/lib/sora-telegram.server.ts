@@ -15,6 +15,11 @@ import {
 import type { SoraActionResult } from "@/lib/sora/types";
 import { envValue, requiredEnv } from "@/lib/env.server";
 import { formatWebContext, searchWeb, shouldUseWebSearch } from "@/lib/sora/web-search.server";
+import {
+  continueServerDelete,
+  getPendingDeleteSummary,
+  prepareServerDelete,
+} from "@/lib/sora/pending-actions.server";
 
 function admin(): SupabaseClient<Database> {
   return createClient<Database>(
@@ -35,6 +40,12 @@ function telegramSafe(text: string) {
     .replace(/\n{3,}/g, "\n\n");
 }
 
+const THINKING_LINES = [
+  "Sora lagi menyusun puzzle-nya, Tuan... 🧩",
+  "Sebentar, neuron virtual Sora lagi pemanasan... ⚡",
+  "Sora sedang meracik jawaban yang nggak hambar... ✨",
+];
+
 function shortIntentNeedsAi(result: SoraActionResult) {
   return [
     "answer_question",
@@ -50,10 +61,21 @@ function shortIntentNeedsAi(result: SoraActionResult) {
   ].includes(result.intent);
 }
 
-function confirmationValue(text: string) {
-  if (/^(ya|iya|yes|y|oke|ok|lanjut|betul|hapus|confirm)\b/i.test(text.trim())) return true;
-  if (/^(batal|tidak|no|gak|ga|jangan|cancel)\b/i.test(text.trim())) return false;
+function confirmationValue(_text: string) {
   return null;
+}
+
+async function getPendingAction(
+  _sb: SupabaseClient<Database>,
+  _userId: string,
+  _chatId: number,
+): Promise<SoraActionResult | null> {
+  // Legacy one-step confirmations are intentionally disabled. New actions use sora_pending_actions.
+  return null;
+}
+
+async function clearPendingAction(_sb: SupabaseClient<Database>, _userId: string, _chatId: number) {
+  // Kept only to make old in-flight code harmless while sessions migrate to the server-owned flow.
 }
 
 async function logTelegramMemory(
@@ -112,63 +134,6 @@ async function getTelegramMemory(sb: SupabaseClient<Database>, userId: string) {
   } catch {
     return "Memori Telegram 48 jam terakhir belum bisa dibaca.";
   }
-}
-
-async function getPendingAction(
-  sb: SupabaseClient<Database>,
-  userId: string,
-  chatId: number,
-): Promise<SoraActionResult | null> {
-  const { data } = await sb
-    .from("sora_telegram_sessions")
-    .select("pending_action,pending_action_expires_at")
-    .eq("user_id", userId)
-    .eq("chat_id", String(chatId))
-    .maybeSingle();
-  if (!data?.pending_action) return null;
-  if (data.pending_action_expires_at && new Date(data.pending_action_expires_at) < new Date()) {
-    await sb.from("sora_telegram_sessions").upsert(
-      {
-        user_id: userId,
-        chat_id: String(chatId),
-        pending_action: null,
-        pending_action_expires_at: null,
-      } as never,
-      { onConflict: "user_id,chat_id" },
-    );
-    return null;
-  }
-  return data.pending_action as SoraActionResult;
-}
-
-async function savePendingAction(
-  sb: SupabaseClient<Database>,
-  userId: string,
-  chatId: number,
-  action: SoraActionResult,
-) {
-  await sb.from("sora_telegram_sessions").upsert(
-    {
-      user_id: userId,
-      chat_id: String(chatId),
-      last_intent: action.intent,
-      pending_action: JSON.parse(JSON.stringify(action)),
-      pending_action_expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
-    } as never,
-    { onConflict: "user_id,chat_id" },
-  );
-}
-
-async function clearPendingAction(sb: SupabaseClient<Database>, userId: string, chatId: number) {
-  await sb.from("sora_telegram_sessions").upsert(
-    {
-      user_id: userId,
-      chat_id: String(chatId),
-      pending_action: null,
-      pending_action_expires_at: null,
-    } as never,
-    { onConflict: "user_id,chat_id" },
-  );
 }
 
 async function buildSchemaCoverage(userId: string, sb: SupabaseClient<Database>) {
@@ -233,7 +198,8 @@ async function askDeepSeekForTelegram(userId: string, text: string, sb: Supabase
           role: "system",
           content:
             "Kamu adalah Sora Brain, asisten pribadi Faza OS. Panggil user Tuan. " +
-            "Gaya: Bahasa Indonesia natural, hangat, pintar, on point, sedikit menggemaskan; boleh pakai 0-2 emot/emoji yang relevan, jangan repetitif. " +
+            "Gaya: Bahasa Indonesia natural, hangat, pintar, ekspresif, dan punya selera humor ringan. Boleh menggoda situasi dengan lembut, memberi reaksi spontan, atau merayakan progres kecil, tetapi jangan memaksa lucu saat topiknya serius. " +
+            "Pakai 0-2 emoji yang relevan, variasikan pilihan kata, jangan repetitif, jangan cringe, dan jangan mengorbankan kejelasan demi bercanda. " +
             "Jawab hemat token: default maksimal 5 baris untuk Telegram, kecuali user minta detail. " +
             "Kalau konteks kurang jelas, tanya 1 pertanyaan spesifik dulu. " +
             "Untuk pertanyaan umum boleh pakai pengetahuan umum LLM. Untuk data personal Faza OS, gunakan hanya konteks DB dan memori 48 jam yang diberikan. Jangan mengarang angka/nama personal. " +
@@ -248,7 +214,7 @@ async function askDeepSeekForTelegram(userId: string, text: string, sb: Supabase
         },
         { role: "user", content: text },
       ],
-      temperature: 0.42,
+      temperature: 0.55,
       max_tokens: 280,
       signal: AbortSignal.timeout(12_000),
     });
@@ -309,7 +275,8 @@ export async function handleSoraText(chatId: number, userId: string, text: strin
   await logTelegramMemory(sb, userId, chatId, "in", text, "received");
 
   try {
-    const placeholder = (await sendMessage(chatId, "<i>Sora sedang berpikir...</i>")) as
+    const thinking = THINKING_LINES[Math.floor(Math.random() * THINKING_LINES.length)];
+    const placeholder = (await sendMessage(chatId, `<i>${thinking}</i>`)) as
       { message_id?: number } | undefined;
     placeholderId = placeholder?.message_id ?? null;
   } catch {
@@ -317,6 +284,31 @@ export async function handleSoraText(chatId: number, userId: string, text: strin
   }
 
   try {
+    const deleteContext = {
+      userId,
+      supabase: sb,
+      rawUserText: text,
+      channel: "telegram" as const,
+      conversationKey: String(chatId),
+    };
+    if (await getPendingDeleteSummary(deleteContext)) {
+      const continued = await continueServerDelete(deleteContext);
+      const reply = continued.message;
+      await sendFinal(chatId, placeholderId, reply);
+      await logTelegramMemory(sb, userId, chatId, "out", reply);
+      await logAction(sb, userId, text, {
+        intent: "delete_record",
+        confidence: 1,
+        requiresConfirmation: Boolean(continued.needsConfirmation),
+        module: "Unknown",
+        data: continued,
+        reply,
+        actionTaken: Boolean(continued.deleted),
+        status: continued.deleted ? "executed" : "needs_confirmation",
+      });
+      return;
+    }
+
     const pending = await getPendingAction(sb, userId, chatId);
     const confirmation = confirmationValue(text);
     if (pending && confirmation === false) {
@@ -362,7 +354,20 @@ export async function handleSoraText(chatId: number, userId: string, text: strin
         routed.status === "needs_confirmation" &&
         routed.data.recordId
       ) {
-        await savePendingAction(sb, userId, chatId, routed);
+        const prepared = await prepareServerDelete(deleteContext, {
+          table: String(routed.data.table ?? ""),
+          recordId: String(routed.data.recordId),
+        });
+        const reply = prepared.message;
+        await sendFinal(chatId, placeholderId, reply);
+        await logTelegramMemory(sb, userId, chatId, "out", reply);
+        await logAction(sb, userId, text, {
+          ...routed,
+          reply,
+          requiresConfirmation: true,
+          status: "needs_confirmation",
+        });
+        return;
       }
       const reply = routed.reply || "Selesai, Tuan.";
       await sendFinal(chatId, placeholderId, reply);

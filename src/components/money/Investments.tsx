@@ -300,14 +300,7 @@ export function InvestmentsTab() {
       )}
 
       <div className="flex justify-end gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled
-          title="Harga investasi di-refresh otomatis oleh cron server setiap 09:00 WIB."
-        >
-          <RefreshCw className="mr-1 h-4 w-4" /> Auto 09:00 WIB
-        </Button>
+        <StatusBadge tone="info">Harga diperbarui otomatis setiap hari</StatusBadge>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button size="sm">

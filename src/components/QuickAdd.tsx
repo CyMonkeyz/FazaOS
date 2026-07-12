@@ -21,6 +21,7 @@ import {
   ListTodo,
   CalendarPlus,
   CheckCircle2,
+  Leaf,
 } from "lucide-react";
 
 type Kind =
@@ -35,7 +36,8 @@ type Kind =
   | "workout_plan"
   | "body_weight"
   | "body_sleep"
-  | "body_water";
+  | "body_water"
+  | "habit";
 
 type Option = { kind: Kind; label: string; icon: typeof ArrowDownCircle; tone: string };
 
@@ -46,6 +48,7 @@ const OPTIONS: Option[] = [
   { kind: "receivable", label: "Piutang", icon: Coins, tone: "text-accent" },
   { kind: "task", label: "Tugas", icon: ListTodo, tone: "text-primary" },
   { kind: "event", label: "Agenda", icon: CalendarPlus, tone: "text-primary" },
+  { kind: "habit", label: "Habit", icon: Leaf, tone: "text-success" },
   { kind: "workout_done", label: "Workout ✓", icon: CheckCircle2, tone: "text-success" },
   { kind: "workout_plan", label: "Rencana WO", icon: Dumbbell, tone: "text-primary" },
   { kind: "body_weight", label: "Berat", icon: Weight, tone: "text-accent" },
@@ -67,6 +70,7 @@ const INVALIDATE: Record<Kind, string[]> = {
   body_weight: ["body_metrics"],
   body_sleep: ["body_metrics"],
   body_water: ["body_metrics"],
+  habit: ["habits-garden", "home-garden"],
 };
 
 export function QuickAddModal({
@@ -155,6 +159,14 @@ export function QuickAddModal({
           starts_at: new Date(date).toISOString(),
           notes: note || null,
         }));
+      } else if (kind === "habit") {
+        if (!name) throw new Error("Nama habit wajib");
+        ({ error } = await supabase.from("habits").insert({
+          user_id: uid,
+          name,
+          description: note || null,
+          weekdays: [0, 1, 2, 3, 4, 5, 6],
+        }));
       } else if (kind === "workout_done") {
         if (!name) throw new Error("Jenis workout wajib (mis. strength)");
         const dur = num1 ? Math.max(0, parseInt(num1)) : null;
@@ -228,8 +240,9 @@ export function QuickAddModal({
 
   // dynamic field flags
   const needsName =
-    ["debt", "receivable", "task", "event", "workout_done", "workout_plan"].includes(kind) ||
-    kind === "note";
+    ["debt", "receivable", "task", "event", "habit", "workout_done", "workout_plan"].includes(
+      kind,
+    ) || kind === "note";
   const needsAmount =
     kind === "expense" || kind === "income" || kind === "debt" || kind === "receivable";
   const needsDate = [
@@ -269,11 +282,13 @@ export function QuickAddModal({
           ? "Judul tugas"
           : kind === "event"
             ? "Judul agenda"
-            : kind === "workout_done"
-              ? "Jenis (strength/cardio…)"
-              : kind === "workout_plan"
-                ? "Judul rencana"
-                : "Judul";
+            : kind === "habit"
+              ? "Nama habit"
+              : kind === "workout_done"
+                ? "Jenis (strength/cardio…)"
+                : kind === "workout_plan"
+                  ? "Judul rencana"
+                  : "Judul";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

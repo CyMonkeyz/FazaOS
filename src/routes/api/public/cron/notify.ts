@@ -324,6 +324,8 @@ async function buildMidday(sb: ReturnType<typeof admin>, userId: string) {
 
 async function runNotifications() {
   const sb = admin();
+  const { data: gardenDecay, error: gardenError } = await sb.rpc("run_garden_maintenance", {});
+  if (gardenError) console.error("[cron/garden]", gardenError.message);
   const H = wibHour();
   const M = wibMinute();
   const today = wibDateISO();
@@ -335,7 +337,7 @@ async function runNotifications() {
     .from("telegram_users")
     .select("user_id,chat_id")
     .not("chat_id", "is", null);
-  if (!linked) return { sent: 0, hour: H, minute: M };
+  if (!linked) return { sent: 0, gardenDecay, hour: H, minute: M };
 
   let sent = 0;
   for (const row of linked) {
@@ -355,6 +357,44 @@ async function runNotifications() {
       inQuietHours(H, M, P.quiet_hours_start as string, P.quiet_hours_end as string)
     ) {
       continue;
+    }
+
+    // Habit reminders are opt-in per user and per habit. Cron runs every 5 minutes.
+    if (P.notify_habits !== false) {
+      const weekday = wibNow().getUTCDay();
+      const { data: habits } = await sb
+        .from("habits")
+        .select("id,name,icon,reminder_time")
+        .eq("user_id", row.user_id)
+        .is("deleted_at", null)
+        .eq("is_active", true)
+        .eq("reminder_enabled", true)
+        .contains("weekdays", [weekday]);
+      for (const habit of habits ?? []) {
+        if (!habit.reminder_time) continue;
+        const [hh, mm] = habit.reminder_time.split(":").map(Number);
+        if (H !== hh || M < mm || M >= mm + 5) continue;
+        const { data: completion } = await sb
+          .from("habit_logs")
+          .select("id")
+          .eq("user_id", row.user_id)
+          .eq("habit_id", habit.id)
+          .eq("log_date", today)
+          .maybeSingle();
+        if (completion) continue;
+        if (
+          await tryOnce(
+            sb,
+            row.user_id,
+            chatId,
+            "habit_reminder",
+            habit.id,
+            async () =>
+              `${habit.icon || "🌱"} <b>Waktunya ${habit.name}</b>\nSatu centang kecil bisa bikin kebun Tuan makin rimbun. Tanamannya sudah siap tepuk tangan pakai daun.`,
+          )
+        )
+          sent++;
+      }
     }
 
     // Morning Brief — 06:30 WIB
@@ -532,7 +572,7 @@ async function runNotifications() {
       }
     }
   }
-  return { sent, hour: H, minute: M, wibDate: today };
+  return { sent, gardenDecay, hour: H, minute: M, wibDate: today };
 }
 
 export const Route = createFileRoute("/api/public/cron/notify")({

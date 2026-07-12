@@ -6,7 +6,7 @@ import {
   sendMessage,
   editMessage,
   answerCallback,
-  MAIN_KEYBOARD,
+  REMOVE_KEYBOARD,
   fmtRp,
   fmtDate,
   fmtDateTime,
@@ -14,6 +14,7 @@ import {
   buildMenuMessages,
   buildShortMenuMessage,
   BOT_COMMANDS,
+  registerBotCommands,
 } from "@/lib/telegram-bot.server";
 import { handleSoraText } from "@/lib/sora-telegram.server";
 import { getUpcomingGoogleCalendarEvents } from "@/lib/google-calendar.server";
@@ -83,9 +84,13 @@ async function requireLinked(chatId: number): Promise<string | null> {
   return uid;
 }
 
-function runSoraInBackground(chatId: number, userId: string, text: string) {
-  void handleSoraText(chatId, userId, text).catch(async (err) => {
-    console.error("[sora telegram background]", err);
+async function runSoraSafely(chatId: number, userId: string, text: string) {
+  try {
+    // Netlify may freeze/terminate work as soon as the webhook response is returned.
+    // Keep the request alive until Sora has edited the placeholder with a final reply.
+    await handleSoraText(chatId, userId, text);
+  } catch (err) {
+    console.error("[sora telegram]", err);
     try {
       await sendMessage(
         chatId,
@@ -94,22 +99,27 @@ function runSoraInBackground(chatId: number, userId: string, text: string) {
     } catch {
       // Telegram delivery failure is already visible in server logs.
     }
-  });
+  }
 }
 
 // ============ COMMAND HANDLERS ============
 
 async function handleStart(chatId: number) {
   const uid = await findUser(chatId);
+  try {
+    await registerBotCommands();
+  } catch (error) {
+    console.error("[telegram commands]", error);
+  }
   const msg = uid
     ? "Halo Tuan! Telegram sudah terhubung ke Faza OS. Kirim /menu untuk mulai."
     : `Halo Tuan! Telegram ID kamu: <code>${chatId}</code>\n\nBuka Faza OS -> <b>More</b> -> <b>Telegram Bot</b>, lalu masukkan Chat ID ini. Setelah itu bot hanya akan merespon ID Telegram yang terdaftar.`;
-  await sendMessage(chatId, msg, uid ? { reply_markup: MAIN_KEYBOARD } : {});
+  await sendMessage(chatId, msg, { reply_markup: REMOVE_KEYBOARD });
 }
 
 async function handleMenu(chatId: number) {
   // Default: SHORT menu. Users ask Sora for the rest.
-  await sendMessage(chatId, buildShortMenuMessage(), { reply_markup: MAIN_KEYBOARD });
+  await sendMessage(chatId, buildShortMenuMessage(), { reply_markup: REMOVE_KEYBOARD });
 }
 
 async function handleFullCommands(chatId: number) {
@@ -118,7 +128,7 @@ async function handleFullCommands(chatId: number) {
     await sendMessage(
       chatId,
       chunks[i],
-      i === chunks.length - 1 ? { reply_markup: MAIN_KEYBOARD } : {},
+      i === chunks.length - 1 ? { reply_markup: REMOVE_KEYBOARD } : {},
     );
   }
 }
@@ -162,7 +172,7 @@ async function handleLink(chatId: number, from: { id: number; first_name?: strin
   await sendMessage(
     chatId,
     `✅ Berhasil ditautkan${from.first_name ? `, ${esc(from.first_name)}` : ""}! Kirim /menu untuk mulai.`,
-    { reply_markup: MAIN_KEYBOARD },
+    { reply_markup: REMOVE_KEYBOARD },
   );
 }
 
@@ -810,7 +820,7 @@ async function handleBrief(chatId: number, userId: string) {
   if ((!events || events.length === 0) && (!tasks || tasks.length === 0) && !workout) {
     msg += `\nHari ini lapang. Waktunya deep work atau istirahat berkualitas.\n`;
   }
-  await sendMessage(chatId, msg, { reply_markup: MAIN_KEYBOARD });
+  await sendMessage(chatId, msg);
 }
 
 async function handleToday(chatId: number, userId: string) {
@@ -1088,8 +1098,7 @@ async function handleUpdate(update: any) {
           );
           return;
         }
-        runSoraInBackground(chatId, u, args.trim());
-        return;
+        return runSoraSafely(chatId, u, args.trim());
       }
     }
 
@@ -1097,61 +1106,16 @@ async function handleUpdate(update: any) {
     const known = BOT_COMMANDS.find((c) => c.command === cmd);
     if (known) {
       await sendMessage(chatId, "Aku proses lewat Sora ya, Tuan.");
-      runSoraInBackground(chatId, u, `${cmd} ${args}`.trim());
-      return;
+      return runSoraSafely(chatId, u, `${cmd} ${args}`.trim());
     }
     await sendMessage(chatId, "Aku proses lewat Sora ya, Tuan.");
-    runSoraInBackground(chatId, u, `${cmd} ${args}`.trim());
-    return;
-  }
-
-  // Keyboard buttons (plain text)
-  const kb: Record<string, (u: string) => Promise<unknown>> = {
-    Brief: (u) => handleBrief(chatId, u),
-    Fokus: (u) => handleFocus(chatId, u),
-    Agenda: (u) => handleAgenda(chatId, u, 3),
-    Uang: (u) => handleMoney(chatId, u),
-    Tugas: (u) => handleTasks(chatId, u),
-    Health: (u) => handleHealth(chatId, u),
-    Tagihan: (u) => handleBills(chatId, u),
-    Hutang: (u) => handleDebts(chatId, u),
-    Piutang: (u) => handleReceivables(chatId, u),
-    Bisnis: (u) => handleBusiness(chatId, u),
-    "Tanya Sora": (u) =>
-      sendMessage(
-        chatId,
-        "Tulis pertanyaannya langsung, Tuan. Contoh:\n- hari ini aku harus fokus apa?\n- catat pengeluaran 25000 kopi\n- piutang siapa yang harus ditagih?",
-      ).then(() => u),
-    Sora: (u) => sendMessage(chatId, "Tulis pertanyaanmu, Tuan.").then(() => u),
-    Menu: () => handleMenu(chatId),
-    "🌅 Brief": (u) => handleBrief(chatId, u),
-    "🎯 Fokus": (u) => handleFocus(chatId, u),
-    "📅 Agenda": (u) => handleAgenda(chatId, u, 3),
-    "💰 Uang": (u) => handleMoney(chatId, u),
-    "📚 Tugas": (u) => handleTasks(chatId, u),
-    "💪 Workout": (u) => handleHealth(chatId, u),
-    "🧾 Tagihan": (u) => handleBills(chatId, u),
-    "💳 Hutang": (u) => handleDebts(chatId, u),
-    "💰 Piutang": (u) => handleReceivables(chatId, u),
-    "🛍️ Bisnis": (u) => handleBusiness(chatId, u),
-    "🧠 Tanya Sora": (u) =>
-      sendMessage(
-        chatId,
-        "Tulis pertanyaannya langsung, Tuan. Contoh:\n- hari ini aku harus fokus apa?\n- catat pengeluaran 25000 kopi\n- piutang siapa yang harus ditagih?",
-      ).then(() => u),
-    "🧠 Sora": (u) => sendMessage(chatId, "Tulis pertanyaanmu, Tuan.").then(() => u),
-    "⚙️ Menu": () => handleMenu(chatId),
-  };
-  if (kb[text]) {
-    const u = await requireLinked(chatId);
-    if (u) await kb[text](u);
-    return;
+    return runSoraSafely(chatId, u, `${cmd} ${args}`.trim());
   }
 
   // Plain natural language → route to Sora
   const u = await requireLinked(chatId);
   if (!u) return;
-  runSoraInBackground(chatId, u, text);
+  return runSoraSafely(chatId, u, text);
 }
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({

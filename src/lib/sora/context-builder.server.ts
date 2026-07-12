@@ -40,6 +40,7 @@ const SOFT_DELETE_TABLES = new Set([
   "daily_logs",
   "weekly_reviews",
   "goals",
+  "habits",
   "workout_plans",
   "workout_logs",
   "exercise_library",
@@ -309,6 +310,12 @@ function modulesForText(text: string): SoraModule[] {
     "weekly",
     "monthly",
     "goal",
+    "habit",
+    "kebiasaan",
+    "tanaman",
+    "garden",
+    "kebun",
+    "streak",
     "progress",
     "mood",
     "energy",
@@ -548,6 +555,31 @@ async function fetchModuleSnapshot(userId: string, module: SoraModule, db: SoraD
           orderBy: "target_date",
           ascending: true,
         }),
+        safeSelect(
+          db,
+          "habits",
+          userId,
+          "id,name,icon,color,weekdays,reminder_enabled,reminder_time,is_active",
+          { limit: 20, orderBy: "sort_order", ascending: true },
+        ),
+        safeSelect(db, "habit_logs", userId, "id,habit_id,log_date,completed_at", {
+          limit: 40,
+          orderBy: "log_date",
+        }),
+        safeSelect(
+          db,
+          "garden_seasons",
+          userId,
+          "id,season_month,score,stage,vitality,status,final_snapshot,archived_at",
+          { limit: 12, orderBy: "season_month" },
+        ),
+        safeSelect(
+          db,
+          "garden_events",
+          userId,
+          "id,season_id,event_date,source_type,points,metadata,created_at",
+          { limit: 30, orderBy: "created_at" },
+        ),
       ]);
     case "Integrations":
       return Promise.all([

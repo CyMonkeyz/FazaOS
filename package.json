@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "smoke": "node scripts/smoke-check.mjs",
+    "audit:sora-schema": "node scripts/audit-sora-schema.mjs",
     "tunnel": "npx localtunnel --port 8080 --local-host 127.0.0.1",
     "telegram:webhook": "node scripts/telegram-webhook.mjs"
   },

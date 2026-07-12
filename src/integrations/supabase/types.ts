@@ -737,6 +737,171 @@ export type Database = {
         };
         Relationships: [];
       };
+      garden_events: {
+        Row: {
+          created_at: string;
+          event_date: string;
+          id: string;
+          metadata: Json;
+          points: number;
+          season_id: string;
+          source_key: string;
+          source_type: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_date?: string;
+          id?: string;
+          metadata?: Json;
+          points: number;
+          season_id: string;
+          source_key: string;
+          source_type: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          event_date?: string;
+          id?: string;
+          metadata?: Json;
+          points?: number;
+          season_id?: string;
+          source_key?: string;
+          source_type?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      garden_seasons: {
+        Row: {
+          archived_at: string | null;
+          best_streak: number;
+          created_at: string;
+          final_snapshot: Json;
+          id: string;
+          score: number;
+          season_month: string;
+          stage: string;
+          status: string;
+          updated_at: string;
+          user_id: string;
+          vitality: number;
+        };
+        Insert: {
+          archived_at?: string | null;
+          best_streak?: number;
+          created_at?: string;
+          final_snapshot?: Json;
+          id?: string;
+          score?: number;
+          season_month: string;
+          stage?: string;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+          vitality?: number;
+        };
+        Update: {
+          archived_at?: string | null;
+          best_streak?: number;
+          created_at?: string;
+          final_snapshot?: Json;
+          id?: string;
+          score?: number;
+          season_month?: string;
+          stage?: string;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+          vitality?: number;
+        };
+        Relationships: [];
+      };
+      habit_logs: {
+        Row: {
+          completed_at: string;
+          created_at: string;
+          habit_id: string;
+          id: string;
+          log_date: string;
+          note: string | null;
+          user_id: string;
+        };
+        Insert: {
+          completed_at?: string;
+          created_at?: string;
+          habit_id: string;
+          id?: string;
+          log_date?: string;
+          note?: string | null;
+          user_id: string;
+        };
+        Update: {
+          completed_at?: string;
+          created_at?: string;
+          habit_id?: string;
+          id?: string;
+          log_date?: string;
+          note?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      habits: {
+        Row: {
+          color: string;
+          created_at: string;
+          deleted_at: string | null;
+          description: string | null;
+          icon: string;
+          id: string;
+          is_active: boolean;
+          name: string;
+          reminder_enabled: boolean;
+          reminder_time: string | null;
+          sort_order: number;
+          updated_at: string;
+          user_id: string;
+          weekdays: number[];
+        };
+        Insert: {
+          color?: string;
+          created_at?: string;
+          deleted_at?: string | null;
+          description?: string | null;
+          icon?: string;
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          reminder_enabled?: boolean;
+          reminder_time?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+          user_id: string;
+          weekdays?: number[];
+        };
+        Update: {
+          color?: string;
+          created_at?: string;
+          deleted_at?: string | null;
+          description?: string | null;
+          icon?: string;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          reminder_enabled?: boolean;
+          reminder_time?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+          user_id?: string;
+          weekdays?: number[];
+        };
+        Relationships: [];
+      };
       investments: {
         Row: {
           avg_buy_price: number;
@@ -1396,13 +1561,17 @@ export type Database = {
       sora_action_logs: {
         Row: {
           action_taken: boolean;
+          completion_tokens: number | null;
           confidence: number | null;
           created_at: string;
+          duration_ms: number | null;
           error_message: string | null;
           id: string;
           input_text: string | null;
           intent: string | null;
+          model: string | null;
           parsed_data: Json | null;
+          prompt_tokens: number | null;
           requires_confirmation: boolean;
           source: string;
           status: string | null;
@@ -1410,13 +1579,17 @@ export type Database = {
         };
         Insert: {
           action_taken?: boolean;
+          completion_tokens?: number | null;
           confidence?: number | null;
           created_at?: string;
+          duration_ms?: number | null;
           error_message?: string | null;
           id?: string;
           input_text?: string | null;
           intent?: string | null;
+          model?: string | null;
           parsed_data?: Json | null;
+          prompt_tokens?: number | null;
           requires_confirmation?: boolean;
           source?: string;
           status?: string | null;
@@ -1424,16 +1597,74 @@ export type Database = {
         };
         Update: {
           action_taken?: boolean;
+          completion_tokens?: number | null;
           confidence?: number | null;
           created_at?: string;
+          duration_ms?: number | null;
           error_message?: string | null;
           id?: string;
           input_text?: string | null;
           intent?: string | null;
+          model?: string | null;
           parsed_data?: Json | null;
+          prompt_tokens?: number | null;
           requires_confirmation?: boolean;
           source?: string;
           status?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      sora_pending_actions: {
+        Row: {
+          action_type: string;
+          challenge: string;
+          channel: string;
+          confirmation_step: number;
+          conversation_key: string;
+          created_at: string;
+          expires_at: string;
+          id: string;
+          payload: Json;
+          status: string;
+          target_id: string;
+          target_label: string;
+          target_table: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          action_type: string;
+          challenge: string;
+          channel: string;
+          confirmation_step?: number;
+          conversation_key?: string;
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          payload?: Json;
+          status?: string;
+          target_id: string;
+          target_label: string;
+          target_table: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          action_type?: string;
+          challenge?: string;
+          channel?: string;
+          confirmation_step?: number;
+          conversation_key?: string;
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          payload?: Json;
+          status?: string;
+          target_id?: string;
+          target_label?: string;
+          target_table?: string;
+          updated_at?: string;
           user_id?: string;
         };
         Relationships: [];
@@ -1766,6 +1997,7 @@ export type Database = {
           notify_daily_digest: boolean;
           notify_deadline: boolean | null;
           notify_debt_due: boolean | null;
+          notify_habits: boolean;
           notify_midday_check: boolean | null;
           notify_morning_brief: boolean | null;
           notify_night_review: boolean | null;
@@ -1792,6 +2024,7 @@ export type Database = {
           notify_daily_digest?: boolean;
           notify_deadline?: boolean | null;
           notify_debt_due?: boolean | null;
+          notify_habits?: boolean;
           notify_midday_check?: boolean | null;
           notify_morning_brief?: boolean | null;
           notify_night_review?: boolean | null;
@@ -1818,6 +2051,7 @@ export type Database = {
           notify_daily_digest?: boolean;
           notify_deadline?: boolean | null;
           notify_debt_due?: boolean | null;
+          notify_habits?: boolean;
           notify_midday_check?: boolean | null;
           notify_morning_brief?: boolean | null;
           notify_night_review?: boolean | null;
@@ -2098,6 +2332,22 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      ensure_garden_season: {
+        Args: { p_date?: string; p_user_id: string };
+        Returns: string;
+      };
+      refresh_garden_season: {
+        Args: { p_date?: string; p_user_id: string };
+        Returns: undefined;
+      };
+      refresh_habit_garden_day: {
+        Args: { p_date: string; p_user_id: string };
+        Returns: undefined;
+      };
+      run_garden_maintenance: {
+        Args: { p_date?: string };
+        Returns: number;
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];

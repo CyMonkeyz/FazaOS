@@ -44,10 +44,11 @@ function AssistantPage() {
           if (data.session?.access_token) {
             headers.set("Authorization", `Bearer ${data.session.access_token}`);
           }
+          headers.set("X-Sora-Session", sessionId);
           return fetch(url, { ...init, headers });
         },
       }),
-    [],
+    [sessionId],
   );
 
   const { messages, sendMessage, status, error, setMessages } = useChat({

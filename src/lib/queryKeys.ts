@@ -42,6 +42,8 @@ export const queryKeys = {
     daily: ["daily_logs"] as const,
     weekly: ["weekly_reviews"] as const,
     goals: ["goals"] as const,
+    habits: ["habits-garden"] as const,
+    garden: ["home-garden"] as const,
   },
   telegram: {
     status: ["telegram-status"] as const,
