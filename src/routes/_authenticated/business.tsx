@@ -5,6 +5,7 @@ import { BusinessSelector } from "@/components/business/BusinessSelector";
 import { BusinessSheetDashboard } from "@/components/business/SheetDashboard";
 import { BusinessesTab } from "@/components/business/BusinessesTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SheetUsageGuide } from "@/components/business/SheetUsageGuide";
 
 export const Route = createFileRoute("/_authenticated/business")({
   head: () => ({ meta: [{ title: "Business Lab — Faza OS" }] }),
@@ -18,6 +19,7 @@ function BusinessPage() {
         <PageHeader
           title="Business Studio"
           subtitle="Dashboard toko otomatis dari Google Sheets, aman dalam mode view-only."
+          action={<SheetUsageGuide />}
         />
         <BusinessSelector />
         <Tabs defaultValue="dashboard">

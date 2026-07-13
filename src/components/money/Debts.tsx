@@ -26,6 +26,7 @@ import { formatIDR, parseAmount, formatDateID, deadlineLabel } from "@/lib/forma
 import { toast } from "sonner";
 import { Plus, Trash2, HandCoins } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { AccountSelect } from "./AccountSelect";
 
 export function DebtsTab() {
   const qc = useQueryClient();
@@ -40,9 +41,11 @@ export function DebtsTab() {
   const [dueDate, setDueDate] = useState("");
   const [recurrence, setRecurrence] = useState("none");
   const [notes, setNotes] = useState("");
+  const [accountId, setAccountId] = useState("");
   const db = supabase as any;
 
   const [payAmt, setPayAmt] = useState("");
+  const [payAccountId, setPayAccountId] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["debts"],
@@ -62,6 +65,7 @@ export function DebtsTab() {
       const { data: u } = await supabase.auth.getUser();
       const amt = parseAmount(amount);
       if (amt <= 0) throw new Error("Jumlah harus lebih dari 0");
+      if (!accountId) throw new Error("Rekening penerima dana wajib dipilih");
       const dueDay = dueDate ? Number(dueDate.slice(8, 10)) : null;
       const { error } = await db.from("debts").insert({
         user_id: u.user!.id,
@@ -72,6 +76,7 @@ export function DebtsTab() {
         recurrence,
         recurrence_day: recurrence === "none" ? null : dueDay,
         notes,
+        account_id: accountId,
       });
       if (error) throw error;
     },
@@ -83,6 +88,7 @@ export function DebtsTab() {
       setDueDate("");
       setRecurrence("none");
       setNotes("");
+      setAccountId("");
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -95,10 +101,12 @@ export function DebtsTab() {
       const amt = parseAmount(payAmt);
       if (amt <= 0) throw new Error("Nominal pembayaran harus lebih dari 0");
       if (amt > payFor.remaining) throw new Error("Pembayaran melebihi sisa hutang");
+      if (!payAccountId) throw new Error("Rekening sumber wajib dipilih");
       const { error } = await supabase.from("debt_payments").insert({
         user_id: u.user!.id,
         debt_id: payFor.id,
         amount: amt,
+        account_id: payAccountId,
       });
       if (error) throw error;
     },
@@ -106,6 +114,7 @@ export function DebtsTab() {
       toast.success("Pembayaran tercatat");
       setPayFor(null);
       setPayAmt("");
+      setPayAccountId("");
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -157,6 +166,12 @@ export function DebtsTab() {
                   required
                 />
               </div>
+              <AccountSelect
+                value={accountId}
+                onChange={setAccountId}
+                label="Rekening penerima dana"
+                direction="destination"
+              />
               <div>
                 <Label>Jatuh tempo</Label>
                 <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
@@ -290,6 +305,11 @@ export function DebtsTab() {
                 required
               />
             </div>
+            <AccountSelect
+              value={payAccountId}
+              onChange={setPayAccountId}
+              label="Bayar dari rekening"
+            />
             <Button type="submit" className="w-full" disabled={pay.isPending}>
               Simpan pembayaran
             </Button>

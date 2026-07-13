@@ -101,13 +101,18 @@ export function GrowthPlant({
   const has = (stage: number) => index >= stage;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-sky-100 via-emerald-50 to-amber-50 dark:from-sky-950/60 dark:via-emerald-950/30 dark:to-amber-950/30">
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl bg-gradient-to-b from-sky-950/70 via-emerald-950/40 to-amber-950/40",
+        compact && "h-full min-h-20",
+      )}
+    >
       <svg
         viewBox="0 0 360 260"
         role="img"
         aria-label={`Tanaman tahap ${current.label}, vitalitas ${vitality}%`}
         className={cn(
-          compact ? "h-20 w-full" : "h-64 w-full",
+          compact ? "h-full min-h-20 w-full" : "h-64 w-full",
           wilt && "garden-wilt",
           muted && "garden-muted",
         )}
@@ -118,8 +123,9 @@ export function GrowthPlant({
             <stop offset="1" stopColor="#9a4428" />
           </linearGradient>
           <linearGradient id="leaf" x1="0" x2="1">
-            <stop offset="0" stopColor="#34a853" />
-            <stop offset="1" stopColor="#147d42" />
+            <stop offset="0" stopColor="#6ee7a0" />
+            <stop offset=".5" stopColor="#2fbf71" />
+            <stop offset="1" stopColor="#11643b" />
           </linearGradient>
           <filter id="shadow">
             <feDropShadow dx="0" dy="5" stdDeviation="5" floodOpacity=".18" />
@@ -225,12 +231,6 @@ export function GrowthPlant({
           </g>
         )}
       </svg>
-      <div className="absolute left-3 top-3 flex gap-2">
-        <StatusBadge tone={vitality >= 70 ? "success" : vitality >= 35 ? "warning" : "danger"}>
-          Vitalitas {vitality}%
-        </StatusBadge>
-        <StatusBadge tone="info">{current.label}</StatusBadge>
-      </div>
     </div>
   );
 }

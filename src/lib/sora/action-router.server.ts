@@ -48,6 +48,20 @@ function db(supabase: SoraDbClient) {
   return supabase as any;
 }
 
+async function primaryAccount(supabase: SoraDbClient, userId: string) {
+  const { data } = await db(supabase)
+    .from("money_accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+  if (!data) throw new Error("Buat rekening aktif terlebih dahulu");
+  return data.id as string;
+}
+
 const ACTION_TABLES = {
   transactions: {
     aliases: ["transaksi", "pengeluaran", "pemasukan", "transaction"],
@@ -769,6 +783,7 @@ export async function executeSoraAction(
       }
       case "add_debt": {
         const amount = Number(parsed.data.amount);
+        const accountId = await primaryAccount(supabase, userId);
         const { data, error } = await db(supabase)
           .from("debts")
           .insert({
@@ -778,6 +793,7 @@ export async function executeSoraAction(
             remaining_balance: amount,
             due_date: typeof parsed.data.dueDate === "string" ? parsed.data.dueDate : null,
             status: "active",
+            account_id: accountId,
           })
           .select("id,lender_name,remaining_balance,due_date,status")
           .maybeSingle();
@@ -792,6 +808,7 @@ export async function executeSoraAction(
       }
       case "add_receivable": {
         const amount = Number(parsed.data.amount);
+        const accountId = await primaryAccount(supabase, userId);
         const { data, error } = await db(supabase)
           .from("receivables")
           .insert({
@@ -804,6 +821,7 @@ export async function executeSoraAction(
                 ? parsed.data.promisedPaymentDate
                 : null,
             status: "active",
+            account_id: accountId,
           })
           .select("id,borrower_name,remaining_amount,promised_payment_date,status")
           .maybeSingle();

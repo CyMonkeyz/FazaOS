@@ -947,8 +947,28 @@ async function handleUpdate(update: any) {
     }
     if (data.startsWith("bill_paid:")) {
       const id = data.split(":")[1];
-      await sb.from("bills").update({ status: "paid" }).eq("id", id).eq("user_id", uid);
-      await answerCallback(cq.id, "💸 Ditandai lunas");
+      const { data: account } = await sb
+        .from("money_accounts")
+        .select("id")
+        .eq("user_id", uid)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("created_at")
+        .limit(1)
+        .maybeSingle();
+      if (!account) {
+        await answerCallback(cq.id, "Buat rekening aktif dulu di Faza OS");
+        return;
+      }
+      const { error } = await sb.rpc("pay_bill_from_account_service", {
+        p_bill_id: id,
+        p_account_id: account.id,
+        p_user_id: uid,
+      });
+      await answerCallback(
+        cq.id,
+        error ? error.message.slice(0, 150) : "💸 Dibayar dari rekening utama",
+      );
       return;
     }
     if (data.startsWith("wo_done:")) {

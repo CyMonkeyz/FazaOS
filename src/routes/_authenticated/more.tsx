@@ -9,9 +9,9 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   saveTelegramChatId,
   sendDailyDigest,
-  registerTelegramCommands,
   getIntegrationStatus,
   sendTelegramTest,
+  queueTelegramScheduleTest,
   getNotifPrefs,
   updateNotifPrefs,
   type NotifPrefs,
@@ -97,9 +97,9 @@ function MorePage() {
   const qc = useQueryClient();
   const saveChatId = useServerFn(saveTelegramChatId);
   const sendDigest = useServerFn(sendDailyDigest);
-  const registerCmds = useServerFn(registerTelegramCommands);
   const fetchStatus = useServerFn(getIntegrationStatus);
   const testMsg = useServerFn(sendTelegramTest);
+  const testSchedule = useServerFn(queueTelegramScheduleTest);
   const fetchPrefs = useServerFn(getNotifPrefs);
   const savePrefs = useServerFn(updateNotifPrefs);
   const resetAccount = useServerFn(resetAllAccountData);
@@ -171,9 +171,9 @@ function MorePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const register = useMutation({
-    mutationFn: async () => registerCmds(),
-    onSuccess: (r) => toast.success(`${r.count} command didaftarkan ke Telegram`),
+  const scheduleTest = useMutation({
+    mutationFn: async () => testSchedule(),
+    onSuccess: () => toast.success("Tes masuk antrean. Worker akan mengirim maksimal satu menit."),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -199,7 +199,18 @@ function MorePage() {
       toast.success("Semua data Faza OS akun ini sudah direset");
       await qc.cancelQueries();
       qc.clear();
-      window.setTimeout(() => window.location.reload(), 600);
+      localStorage.clear();
+      sessionStorage.clear();
+      if ("caches" in window)
+        await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+      if ("serviceWorker" in navigator)
+        await Promise.all(
+          (await navigator.serviceWorker.getRegistrations()).map((registration) =>
+            registration.unregister(),
+          ),
+        );
+      await supabase.auth.signOut();
+      window.setTimeout(() => navigate({ to: "/auth", replace: true }), 400);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -331,7 +342,10 @@ function MorePage() {
             <ProgressLoader
               label="Mengirim ringkasan..."
               active={
-                digest.isPending || test.isPending || register.isPending || saveTelegramId.isPending
+                digest.isPending ||
+                test.isPending ||
+                scheduleTest.isPending ||
+                saveTelegramId.isPending
               }
             />
             <div className="grid grid-cols-2 gap-2">
@@ -354,10 +368,10 @@ function MorePage() {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => register.mutate()}
-                disabled={register.isPending}
+                onClick={() => scheduleTest.mutate()}
+                disabled={scheduleTest.isPending}
               >
-                <ListChecks className="mr-1 h-3 w-3" /> Daftarkan menu bot
+                <Send className="mr-1 h-3 w-3" /> Tes jadwal
               </Button>
               <Button
                 variant="outline"
@@ -369,8 +383,8 @@ function MorePage() {
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Notifikasi otomatis: 🌅 06:30 brief, 🧾 09:00 tagihan, ⏰ 20:30 review. Atur di bot
-              dengan <code>/notif</code> atau <code>/quiet</code>.
+              Pesan terjadwal Sora: 06:30 brief, 09:00 tagihan, 20:30 review. Atur di bot dengan{" "}
+              <code>/notif</code> atau <code>/quiet</code>.
             </p>
           </>
         )}
@@ -384,9 +398,11 @@ function MorePage() {
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <BellRing className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold">Preferensi Notifikasi</h3>
+            <h3 className="text-sm font-semibold">Pesan Otomatis Sora</h3>
           </div>
-          <p className="text-[11px] text-muted-foreground">Atur notifikasi Telegram harian Tuan.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Atur pesan yang dikirim Sora sesuai jadwal Tuan.
+          </p>
           <div className="space-y-1.5">
             {(
               [

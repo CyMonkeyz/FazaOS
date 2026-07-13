@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import { formatIDR, parseAmount, deadlineLabel, daysUntil } from "@/lib/format";
 import { toast } from "sonner";
 import { Plus, Trash2, ReceiptText, Check } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { AccountSelect } from "./AccountSelect";
 
 const BILL_TYPES = [
   { v: "subscription", l: "Langganan" },
@@ -40,6 +42,8 @@ export function BillsTab() {
   const [dueDate, setDueDate] = useState("");
   const [type, setType] = useState<string>("subscription");
   const [recurrence, setRecurrence] = useState("monthly");
+  const [payFor, setPayFor] = useState<{ id: string; name: string; amount: number } | null>(null);
+  const [payAccountId, setPayAccountId] = useState("");
   const db = supabase as any;
 
   const { data, isLoading } = useQuery({
@@ -85,14 +89,21 @@ export function BillsTab() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("bills").update({ status: "paid" }).eq("id", id);
+    mutationFn: async () => {
+      if (!payFor || !payAccountId) throw new Error("Rekening sumber wajib dipilih");
+      const { error } = await (supabase as any).rpc("pay_bill_from_account", {
+        p_bill_id: payFor.id,
+        p_account_id: payAccountId,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Tagihan ditandai lunas");
+      setPayFor(null);
+      setPayAccountId("");
       qc.invalidateQueries();
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const del = useMutation({
@@ -224,7 +235,9 @@ export function BillsTab() {
                   </StatusBadge>
                   {b.status !== "paid" && (
                     <button
-                      onClick={() => markPaid.mutate(b.id)}
+                      onClick={() =>
+                        setPayFor({ id: b.id, name: b.name, amount: Number(b.amount) })
+                      }
                       className="p-1 text-muted-foreground hover:text-success"
                       title="Tandai lunas"
                     >
@@ -252,6 +265,32 @@ export function BillsTab() {
           })}
         </Card>
       )}
+      <Dialog open={!!payFor} onOpenChange={(value) => !value && setPayFor(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Bayar {payFor?.name}</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              markPaid.mutate();
+            }}
+          >
+            <p className="text-sm text-muted-foreground">
+              Nominal {formatIDR(payFor?.amount ?? 0)}
+            </p>
+            <AccountSelect
+              value={payAccountId}
+              onChange={setPayAccountId}
+              label="Bayar dari rekening"
+            />
+            <Button type="submit" className="w-full" disabled={markPaid.isPending}>
+              Bayar tagihan
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

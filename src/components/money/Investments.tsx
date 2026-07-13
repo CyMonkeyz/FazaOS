@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { AccountSelect } from "./AccountSelect";
 
 type InvType =
   "saham" | "crypto" | "obligasi" | "reksadana" | "p2p" | "emas" | "deposito" | "forex" | "other";
@@ -103,6 +104,8 @@ export function InvestmentsTab() {
   const [sellQty, setSellQty] = useState("");
   const [sellPrice, setSellPrice] = useState("");
   const [sellDate, setSellDate] = useState(new Date().toISOString().slice(0, 10));
+  const [accountId, setAccountId] = useState("");
+  const [sellAccountId, setSellAccountId] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["investments"],
@@ -127,6 +130,8 @@ export function InvestmentsTab() {
         a = parseAmount(avg),
         c = parseAmount(current);
       if (q <= 0) throw new Error("Jumlah harus > 0");
+      if (a <= 0) throw new Error("Harga beli harus lebih dari 0");
+      if (!accountId) throw new Error("Rekening sumber wajib dipilih");
       const { error } = await db.from("investments").insert({
         user_id: u.user!.id,
         type,
@@ -137,6 +142,7 @@ export function InvestmentsTab() {
         current_price: c || a,
         currency,
         notes: notes || null,
+        account_id: accountId,
       });
       if (error) throw error;
     },
@@ -148,6 +154,7 @@ export function InvestmentsTab() {
       setAvg("");
       setCurrent("");
       setNotes("");
+      setAccountId("");
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["investments"] });
     },
@@ -176,29 +183,14 @@ export function InvestmentsTab() {
       if (qty <= 0) throw new Error("Qty jual harus lebih dari 0");
       if (qty > Number(sellFor.quantity)) throw new Error("Qty jual melebihi kepemilikan");
       if (price <= 0) throw new Error("Harga jual wajib lebih dari 0");
-      const { data: u } = await supabase.auth.getUser();
-      const remaining = Number(sellFor.quantity) - qty;
-      const total = qty * price;
-      const { error: txError } = await (supabase as any).from("transactions").insert({
-        user_id: u.user!.id,
-        type: "income",
-        amount: total,
-        date: sellDate,
-        name: `Jual ${sellFor.name}`,
-        note: `${qty} ${sellFor.ticker ?? sellFor.name} @ ${price}`,
-        affects_budget: false,
-        tags: ["investment", "sell"],
+      if (!sellAccountId) throw new Error("Rekening tujuan wajib dipilih");
+      const { error } = await (supabase as any).rpc("sell_investment_to_account", {
+        p_investment_id: sellFor.id,
+        p_account_id: sellAccountId,
+        p_quantity: qty,
+        p_price: price,
+        p_date: sellDate,
       });
-      if (txError) throw txError;
-      const { error } = await db
-        .from("investments")
-        .update({
-          quantity: remaining,
-          current_price: price,
-          last_updated_at: new Date().toISOString(),
-          deleted_at: remaining <= 0 ? new Date().toISOString() : null,
-        })
-        .eq("id", sellFor.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -206,6 +198,7 @@ export function InvestmentsTab() {
       setSellFor(null);
       setSellQty("");
       setSellPrice("");
+      setSellAccountId("");
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -398,6 +391,7 @@ export function InvestmentsTab() {
                 <Label>Catatan</Label>
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
+              <AccountSelect value={accountId} onChange={setAccountId} label="Beli dari rekening" />
               <Button type="submit" className="w-full" disabled={create.isPending}>
                 Simpan
               </Button>
@@ -548,6 +542,12 @@ export function InvestmentsTab() {
               <Label>Tanggal</Label>
               <Input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} />
             </div>
+            <AccountSelect
+              value={sellAccountId}
+              onChange={setSellAccountId}
+              label="Hasil jual masuk ke"
+              direction="destination"
+            />
             <Button type="submit" className="w-full" disabled={sell.isPending}>
               Catat penjualan
             </Button>

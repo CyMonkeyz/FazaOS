@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseAmount } from "@/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
+import { AccountSelect } from "@/components/money/AccountSelect";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -88,6 +89,7 @@ export function QuickAddModal({
   const [num1, setNum1] = useState(""); // sleep hours, water liters, workout minutes
   const [num2, setNum2] = useState(""); // sleep quality
   const [loading, setLoading] = useState(false);
+  const [accountId, setAccountId] = useState("");
   const qc = useQueryClient();
 
   const reset = () => {
@@ -96,6 +98,7 @@ export function QuickAddModal({
     setName("");
     setNum1("");
     setNum2("");
+    setAccountId("");
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -111,12 +114,14 @@ export function QuickAddModal({
 
     let error: { message: string } | null = null;
     try {
+      const needsAccount = ["expense", "income", "debt", "receivable"].includes(kind);
+      if (needsAccount && !accountId) throw new Error("Rekening wajib dipilih");
       if (kind === "expense" || kind === "income") {
         const amt = parseAmount(amount);
         if (amt <= 0) throw new Error("Nominal harus lebih dari 0");
         ({ error } = await supabase
           .from("transactions")
-          .insert({ user_id: uid, type: kind, amount: amt, note, date }));
+          .insert({ user_id: uid, type: kind, amount: amt, note, date, account_id: accountId }));
       } else if (kind === "debt") {
         const amt = parseAmount(amount);
         if (!name || amt <= 0) throw new Error("Nama pemberi & nominal wajib");
@@ -126,6 +131,7 @@ export function QuickAddModal({
           amount: amt,
           remaining_balance: amt,
           notes: note,
+          account_id: accountId,
         }));
       } else if (kind === "receivable") {
         const amt = parseAmount(amount);
@@ -136,6 +142,7 @@ export function QuickAddModal({
           amount: amt,
           remaining_amount: amt,
           notes: note,
+          account_id: accountId,
         }));
       } else if (kind === "note") {
         ({ error } = await supabase
@@ -333,6 +340,14 @@ export function QuickAddModal({
                 required
               />
             </div>
+          )}
+          {needsAmount && (
+            <AccountSelect
+              value={accountId}
+              onChange={setAccountId}
+              label={kind === "income" || kind === "debt" ? "Rekening tujuan" : "Rekening sumber"}
+              direction={kind === "income" || kind === "debt" ? "destination" : "source"}
+            />
           )}
           {needsNum1 && (
             <div className="grid grid-cols-2 gap-2">

@@ -20,6 +20,7 @@ import { formatIDR, parseAmount, formatDateID, deadlineLabel } from "@/lib/forma
 import { toast } from "sonner";
 import { Plus, Trash2, Coins, MessageCircle } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { AccountSelect } from "./AccountSelect";
 
 export function ReceivablesTab() {
   const qc = useQueryClient();
@@ -42,6 +43,8 @@ export function ReceivablesTab() {
   const [recurrence, setRecurrence] = useState("none");
   const [notes, setNotes] = useState("");
   const [payAmt, setPayAmt] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [payAccountId, setPayAccountId] = useState("");
   const db = supabase as any;
 
   const { data, isLoading } = useQuery({
@@ -62,6 +65,7 @@ export function ReceivablesTab() {
       const { data: u } = await supabase.auth.getUser();
       const amt = parseAmount(amount);
       if (amt <= 0) throw new Error("Jumlah harus lebih dari 0");
+      if (!accountId) throw new Error("Rekening sumber dana wajib dipilih");
       const promiseDay = promisedDate ? Number(promisedDate.slice(8, 10)) : null;
       const { error } = await db.from("receivables").insert({
         user_id: u.user!.id,
@@ -72,6 +76,7 @@ export function ReceivablesTab() {
         recurrence,
         recurrence_day: recurrence === "none" ? null : promiseDay,
         notes,
+        account_id: accountId,
       });
       if (error) throw error;
     },
@@ -83,6 +88,7 @@ export function ReceivablesTab() {
       setPromisedDate("");
       setRecurrence("none");
       setNotes("");
+      setAccountId("");
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -95,10 +101,12 @@ export function ReceivablesTab() {
       const amt = parseAmount(payAmt);
       if (amt <= 0) throw new Error("Nominal harus lebih dari 0");
       if (amt > payFor.remaining) throw new Error("Nominal melebihi sisa piutang");
+      if (!payAccountId) throw new Error("Rekening tujuan wajib dipilih");
       const { error } = await supabase.from("receivable_payments").insert({
         user_id: u.user!.id,
         receivable_id: payFor.id,
         amount: amt,
+        account_id: payAccountId,
       });
       if (error) throw error;
     },
@@ -106,6 +114,7 @@ export function ReceivablesTab() {
       toast.success("Pembayaran diterima");
       setPayFor(null);
       setPayAmt("");
+      setPayAccountId("");
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -182,6 +191,11 @@ export function ReceivablesTab() {
                   required
                 />
               </div>
+              <AccountSelect
+                value={accountId}
+                onChange={setAccountId}
+                label="Rekening sumber dana"
+              />
               <div>
                 <Label>Janji bayar</Label>
                 <Input
@@ -335,6 +349,12 @@ export function ReceivablesTab() {
                 required
               />
             </div>
+            <AccountSelect
+              value={payAccountId}
+              onChange={setPayAccountId}
+              label="Masuk ke rekening"
+              direction="destination"
+            />
             <Button type="submit" className="w-full" disabled={pay.isPending}>
               Simpan
             </Button>

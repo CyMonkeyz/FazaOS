@@ -77,24 +77,36 @@ export async function getUnifiedMemory(
   client: SoraDbClient | any,
 ) {
   const since = new Date(Date.now() - 90 * 86400000).toISOString();
-  const [{ data: profile }, { data: conversation }] = await Promise.all([
-    db(client)
-      .from("sora_profile_memories")
-      .select("category,content")
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .order("updated_at", { ascending: false })
-      .limit(24),
-    db(client)
-      .from("sora_conversation_messages")
-      .select("role,content,channel,created_at")
-      .eq("user_id", userId)
-      .eq("conversation_key", conversationKey.slice(0, 180))
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(12),
-  ]);
-  return `PERMANENT PROFILE MEMORY:\n${(profile ?? []).map((m: any) => `- [${m.category}] ${m.content}`).join("\n") || "Belum ada."}\n\nCONVERSATION MEMORY TERBARU:\n${
+  const [{ data: profile }, { data: conversation }, { data: identity }, { data: preferences }] =
+    await Promise.all([
+      db(client)
+        .from("sora_profile_memories")
+        .select("category,content")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false }),
+      db(client)
+        .from("sora_conversation_messages")
+        .select("role,content,channel,created_at")
+        .eq("user_id", userId)
+        .eq("conversation_key", conversationKey.slice(0, 180))
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(12),
+      db(client)
+        .from("profiles")
+        .select("display_name,timezone,currency,onboarded")
+        .eq("id", userId)
+        .maybeSingle(),
+      db(client)
+        .from("user_preferences")
+        .select(
+          "locale,theme,hide_amounts,show_amounts_in_telegram,quiet_hours_enabled,quiet_hours_start,quiet_hours_end",
+        )
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
+  return `IDENTITAS DAN PREFERENSI TERBARU:\n${JSON.stringify({ identity, preferences })}\n\nPERMANENT PROFILE MEMORY LENGKAP:\n${(profile ?? []).map((m: any) => `- [${m.category}] ${m.content}`).join("\n") || "Belum ada."}\n\nCONVERSATION MEMORY TERBARU:\n${
     (conversation ?? [])
       .reverse()
       .map((m: any) => `${m.role === "user" ? "Tuan" : "Sora"}: ${String(m.content).slice(0, 300)}`)

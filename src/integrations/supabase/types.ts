@@ -153,6 +153,7 @@ export type Database = {
       };
       bills: {
         Row: {
+          account_id: string | null;
           amount: number;
           bill_type: Database["public"]["Enums"]["bill_type"] | null;
           category: string | null;
@@ -169,6 +170,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          account_id?: string | null;
           amount: number;
           bill_type?: Database["public"]["Enums"]["bill_type"] | null;
           category?: string | null;
@@ -185,6 +187,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          account_id?: string | null;
           amount?: number;
           bill_type?: Database["public"]["Enums"]["bill_type"] | null;
           category?: string | null;
@@ -488,6 +491,7 @@ export type Database = {
       };
       debt_payments: {
         Row: {
+          account_id: string | null;
           amount: number;
           created_at: string | null;
           debt_id: string;
@@ -500,6 +504,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          account_id?: string | null;
           amount: number;
           created_at?: string | null;
           debt_id: string;
@@ -512,6 +517,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          account_id?: string | null;
           amount?: number;
           created_at?: string | null;
           debt_id?: string;
@@ -542,6 +548,7 @@ export type Database = {
       };
       debts: {
         Row: {
+          account_id: string | null;
           amount: number;
           borrowed_date: string;
           created_at: string | null;
@@ -561,6 +568,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          account_id?: string | null;
           amount: number;
           borrowed_date?: string;
           created_at?: string | null;
@@ -580,6 +588,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          account_id?: string | null;
           amount?: number;
           borrowed_date?: string;
           created_at?: string | null;
@@ -904,6 +913,7 @@ export type Database = {
       };
       investments: {
         Row: {
+          account_id: string | null;
           avg_buy_price: number;
           created_at: string;
           currency: string;
@@ -920,6 +930,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          account_id?: string | null;
           avg_buy_price?: number;
           created_at?: string;
           currency?: string;
@@ -936,6 +947,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          account_id?: string | null;
           avg_buy_price?: number;
           created_at?: string;
           currency?: string;
@@ -1362,6 +1374,7 @@ export type Database = {
       };
       receivable_payments: {
         Row: {
+          account_id: string | null;
           amount: number;
           created_at: string | null;
           deleted_at: string | null;
@@ -1374,6 +1387,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          account_id?: string | null;
           amount: number;
           created_at?: string | null;
           deleted_at?: string | null;
@@ -1386,6 +1400,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          account_id?: string | null;
           amount?: number;
           created_at?: string | null;
           deleted_at?: string | null;
@@ -1416,6 +1431,7 @@ export type Database = {
       };
       receivables: {
         Row: {
+          account_id: string | null;
           amount: number;
           amount_paid: number;
           borrower_name: string;
@@ -1435,6 +1451,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          account_id?: string | null;
           amount: number;
           amount_paid?: number;
           borrower_name: string;
@@ -1454,6 +1471,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          account_id?: string | null;
           amount?: number;
           amount_paid?: number;
           borrower_name?: string;
@@ -2593,6 +2611,28 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      account_balance: {
+        Args: { p_account_id: string; p_user_id?: string };
+        Returns: number;
+      };
+      pay_bill_from_account: {
+        Args: { p_account_id: string; p_bill_id: string };
+        Returns: undefined;
+      };
+      pay_bill_from_account_service: {
+        Args: { p_account_id: string; p_bill_id: string; p_user_id: string };
+        Returns: undefined;
+      };
+      sell_investment_to_account: {
+        Args: {
+          p_account_id: string;
+          p_date: string;
+          p_investment_id: string;
+          p_price: number;
+          p_quantity: number;
+        };
+        Returns: undefined;
+      };
       cleanup_sora_conversations: { Args: Record<PropertyKey, never>; Returns: number };
       transfer_money: {
         Args: {

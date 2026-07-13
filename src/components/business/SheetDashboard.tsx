@@ -28,7 +28,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { EmptyState, LoadingBlock, StatCard, StatusBadge } from "@/components/ui-lite";
 import { formatIDR } from "@/lib/format";
 import { toast } from "sonner";
-import { SpreadsheetCreator } from "./SpreadsheetCreator";
 
 const db = supabase as any;
 function sheetId(value: string) {
@@ -124,12 +123,6 @@ export function BusinessSheetDashboard() {
             </div>
           </div>
           <div className="flex gap-2">
-            {selectedBusinessId && selectedBusiness && (
-              <SpreadsheetCreator
-                businessId={selectedBusinessId}
-                businessName={selectedBusiness.name}
-              />
-            )}
             {connection && (
               <StatusBadge tone={connection.status === "active" ? "success" : "danger"}>
                 {connection.status}

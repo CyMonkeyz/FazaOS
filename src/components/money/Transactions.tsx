@@ -20,6 +20,7 @@ import { formatIDR, parseAmount, formatDateID } from "@/lib/format";
 import { toast } from "sonner";
 import { Plus, ArrowUpCircle, ArrowDownCircle, Trash2 } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { AccountSelect } from "./AccountSelect";
 
 export function TransactionsTab() {
   const qc = useQueryClient();
@@ -31,6 +32,7 @@ export function TransactionsTab() {
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [budgetMode, setBudgetMode] = useState("none");
+  const [accountId, setAccountId] = useState("");
   const db = supabase as any;
 
   const { data, isLoading } = useQuery({
@@ -67,6 +69,7 @@ export function TransactionsTab() {
       const { data: u } = await supabase.auth.getUser();
       const amt = parseAmount(amount);
       if (amt <= 0) throw new Error("Nominal harus lebih dari 0");
+      if (!accountId) throw new Error("Rekening wajib dipilih");
       const budgetId = type === "expense" && budgetMode !== "none" ? budgetMode : null;
       const { error } = await db.from("transactions").insert({
         user_id: u.user!.id,
@@ -77,6 +80,7 @@ export function TransactionsTab() {
         date,
         budget_id: budgetId,
         affects_budget: type === "expense" ? !!budgetId : false,
+        account_id: accountId,
       });
       if (error) throw error;
     },
@@ -86,6 +90,7 @@ export function TransactionsTab() {
       setName("");
       setNote("");
       setBudgetMode("none");
+      setAccountId("");
       setOpen(false);
       qc.invalidateQueries();
     },
@@ -162,6 +167,12 @@ export function TransactionsTab() {
                   required
                 />
               </div>
+              <AccountSelect
+                value={accountId}
+                onChange={setAccountId}
+                direction={type === "income" ? "destination" : "source"}
+                label={type === "income" ? "Rekening tujuan" : "Rekening sumber"}
+              />
               <div>
                 <Label>Tanggal</Label>
                 <Input

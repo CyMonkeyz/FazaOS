@@ -10,6 +10,9 @@ import {
   PUBLIC_BOT_COMMANDS,
 } from "./telegram-bot.server";
 import { getUpcomingGoogleCalendarEvents } from "./google-calendar.server";
+import { createClient } from "@supabase/supabase-js";
+import { requiredEnv } from "./env.server";
+import type { Database } from "@/integrations/supabase/types";
 
 export const sendTelegramTest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -26,6 +29,33 @@ export const sendTelegramTest = createServerFn({ method: "POST" })
       "✅ <b>Faza OS</b> terhubung. Test message dari Tuan.",
       { reply_markup: REMOVE_KEYBOARD },
     );
+    return { ok: true };
+  });
+
+export const queueTelegramScheduleTest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: link } = await context.supabase
+      .from("telegram_users")
+      .select("chat_id")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!link?.chat_id) throw new Error("Telegram belum ditautkan.");
+    const admin = createClient<Database>(
+      requiredEnv("Supabase URL", "SUPABASE_URL", "VITE_SUPABASE_URL"),
+      requiredEnv("Supabase service role", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"),
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    ) as any;
+    const { error } = await admin.from("telegram_jobs").insert({
+      user_id: context.userId,
+      chat_id: String(link.chat_id),
+      job_type: "scheduled_message",
+      payload: { text: "✅ Tes worker pesan terjadwal berhasil. Sora hadir tepat waktu, Tuan." },
+      status: "queued",
+      scheduled_at: new Date().toISOString(),
+      dedupe_key: `schedule-test:${context.userId}:${Date.now()}`,
+    });
+    if (error) throw error;
     return { ok: true };
   });
 

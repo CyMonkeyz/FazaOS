@@ -1223,6 +1223,8 @@ export function createSoraTools(ctx: SoraToolContext) {
         notes: z.string().nullable().optional(),
       }),
       execute: async ({ lenderName, amount, dueDate, notes }) => {
+        const account = await firstAccount(ctx);
+        if (!account) throw new Error("Buat rekening aktif terlebih dahulu");
         const { data, error } = await db(ctx)
           .from("debts")
           .insert({
@@ -1233,6 +1235,7 @@ export function createSoraTools(ctx: SoraToolContext) {
             due_date: dueDate ?? null,
             notes: notes ?? null,
             status: "active",
+            account_id: account.id,
           })
           .select("id,lender_name,remaining_balance,due_date,status")
           .maybeSingle();
@@ -1249,6 +1252,8 @@ export function createSoraTools(ctx: SoraToolContext) {
         notes: z.string().nullable().optional(),
       }),
       execute: async ({ borrowerName, amount, promisedPaymentDate, notes }) => {
+        const account = await firstAccount(ctx);
+        if (!account) throw new Error("Buat rekening aktif terlebih dahulu");
         const { data, error } = await db(ctx)
           .from("receivables")
           .insert({
@@ -1259,6 +1264,7 @@ export function createSoraTools(ctx: SoraToolContext) {
             promised_payment_date: promisedPaymentDate ?? null,
             notes: notes ?? null,
             status: "active",
+            account_id: account.id,
           })
           .select("id,borrower_name,remaining_amount,promised_payment_date,status")
           .maybeSingle();
